@@ -6,6 +6,7 @@ import { localPasscode } from "../lib/demo/passcode.mjs";
 import { freePort, startServer, waitUntilUp } from "../lib/demo/processes.mjs";
 import { seedLocalWall, seedStatusMessage } from "../lib/demo/seed.mjs";
 import { buildAndOpenOnVirtualDevice, vegaCli, virtualDeviceRunning } from "../lib/demo/tv.mjs";
+import { demoIntro, demoReady } from "../lib/demo/welcome.mjs";
 import { API_DIR, CF, CONFIG_FILE, DEV_VARS, ROOT, VITE, WEB_DIR } from "../lib/paths.mjs";
 import { ensureFingerprintKeyFile } from "../lib/secrets/index.mjs";
 import { bold, dim, log, ok, step, UserError } from "../lib/ui.mjs";
@@ -34,6 +35,8 @@ export async function demo({ lan = false, tv = false } = {}) {
   const webPort = await freePort(5173);
   const apiUrl = `http://${host}:${apiPort}`;
   const webUrl = `http://${host}:${webPort}`;
+
+  log(demoIntro({ shared }));
 
   const { passcode, created } = localPasscode();
   await ensureFingerprintKeyFile(DEV_VARS);
@@ -89,14 +92,8 @@ export async function demo({ lan = false, tv = false } = {}) {
     throw error;
   }
 
-  log(`
-${bold("BoothWall is running.")}
-
-  Display        ${webUrl}/        ${dim("the live photo wall")}
-  Upload page    ${webUrl}/snap
-  Control panel  ${webUrl}/control   passcode ${bold(passcode)}${created ? dim("  (new, saved in apps/api/.dev.vars)") : ""}
-
-Open Control to review photos and manage uploads.${lan && !tv ? tvHint(apiUrl, webUrl) : ""}`);
+  log(demoReady({ webUrl, passcode, created, shared }));
+  if (lan && !tv) log(tvHint(apiUrl, webUrl));
 
   if (tv) await openOnTv();
   log("Press Ctrl+C to stop.");
@@ -113,7 +110,7 @@ Open Control to review photos and manage uploads.${lan && !tv ? tvHint(apiUrl, w
 /** The Vega app takes its API from the config at build time. */
 const tvHint = (apiUrl, webUrl) => `
 
-${bold("On a Fire TV or the Vega Virtual Device")} (same network), set in ${CONFIG}:
+${bold("Optional · Fire TV or Vega Virtual Device")} (same network), set in ${CONFIG}:
   urls: { api: "${apiUrl}", web: "${webUrl}", ... }
 then ${dim("pnpm tv:build:debug && pnpm tv:run:vvd")} (or ${dim("vega run-app … -d <device>")}).`;
 

@@ -85,6 +85,11 @@ pnpm install
 pnpm demo --lan
 ```
 
+The launcher shows its startup steps, then a guest link, the host Control link and passcode,
+and the browser display link. In a supported terminal, LAN mode also prints a QR code for
+joining from a phone on the same Wi-Fi. Narrow terminals, redirected output and `NO_COLOR`
+keep the full links without the QR or terminal decoration.
+
 It starts the API and web app on your machine's network address, adds approved demo photos to a fresh wall and prints display, guest and Control addresses plus the local passcode. Open `/` on a laptop or projector, scan its QR code with your phone, send a photo and approve it in `/control`. Your phone needs to be on the same network. Plain `pnpm demo` keeps everything on localhost, where `/snap` in a second browser tab stands in for the phone. Ctrl+C stops it.
 
 `pnpm web:dev` runs the web app alone against the API in your config, at http://localhost:5173. Arrow keys, Enter, Space and Escape stand in for the remote. Add `?demo` to run the wall on the bundled photos with no API at all, `?kiosk` to hide the cursor and hints, or `?fullscreen` to go full screen on the first key press.

@@ -1,7 +1,18 @@
 import { stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
 
-const colour = (code) => (text) => (stdout.isTTY ? `\x1b[${code}m${text}\x1b[0m` : text);
+/** Keep redirected logs, CI and explicitly plain terminals free of decorations. */
+export function terminalOutput({
+  isTTY = stdout.isTTY,
+  columns = stdout.columns,
+  env = process.env,
+} = {}) {
+  const width = Number.isFinite(columns) && columns > 0 ? Math.floor(columns) : 80;
+  const rich = Boolean(isTTY && width >= 40 && env.TERM !== "dumb" && !env.NO_COLOR && !env.CI);
+  return { rich, color: rich, columns: width };
+}
+
+const colour = (code) => (text) => (terminalOutput().color ? `\x1b[${code}m${text}\x1b[0m` : text);
 export const bold = colour(1);
 export const dim = colour(2);
 const green = colour(32);
