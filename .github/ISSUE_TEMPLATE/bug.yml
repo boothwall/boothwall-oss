@@ -42,4 +42,4 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Device, browser or TV model, OS, Node version. Leave out passcodes, keys and private addresses.
+      description: Where it runs (Vega Virtual Device, a Fire TV Stick and its model, or a browser), OS and Node version. Leave out passcodes, keys and private addresses.
