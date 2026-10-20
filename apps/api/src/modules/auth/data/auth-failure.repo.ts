@@ -1,15 +1,15 @@
 /** Failed admin attempts. The only file in this module that talks to D1. */
-import { and, count, eq, gte, lt } from "drizzle-orm";
+import { and, count, gte, inArray, lt } from "drizzle-orm";
 
 import type { Db } from "@/db/client";
 import { authFailures } from "@/db/schema";
 
 export const authFailureRepo = {
-  async countSince(db: Db, ipHash: string, since: Date): Promise<number> {
+  async countSince(db: Db, fingerprints: string[], since: Date): Promise<number> {
     const [row] = await db
       .select({ value: count() })
       .from(authFailures)
-      .where(and(eq(authFailures.ipHash, ipHash), gte(authFailures.createdAt, since)));
+      .where(and(inArray(authFailures.ipHash, fingerprints), gte(authFailures.createdAt, since)));
     return row?.value ?? 0;
   },
 

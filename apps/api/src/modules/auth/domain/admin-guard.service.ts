@@ -1,4 +1,4 @@
-import { hashClient } from "@/core/security/client-ip";
+import { clientFingerprints } from "@/core/security/client-ip";
 import { safeEqual } from "@/core/security/crypto";
 import type { Db } from "@/db/client";
 import { authFailureRepo } from "@/modules/auth/data/auth-failure.repo";
@@ -14,17 +14,32 @@ export type AdminAttempt = {
   /** Bearer token from the request, or "" when none was sent. */
   token: string;
   adminToken: string;
+  fingerprintKey?: string;
   clientIp: string;
   now: Date;
 };
 
 export const adminGuardService = {
   /** True for the right passcode. Wrong ones are counted; a locked-out client is refused. */
-  async verify({ db, token, adminToken, clientIp, now }: AdminAttempt): Promise<boolean> {
+  async verify({
+    db,
+    token,
+    adminToken,
+    fingerprintKey,
+    clientIp,
+    now,
+  }: AdminAttempt): Promise<boolean> {
     if (!token) return false;
-    const ipHash = await hashClient(clientIp, now);
+    const { current: ipHash, legacy } = await clientFingerprints(
+      clientIp,
+      now,
+      fingerprintKey,
+      "admin-auth",
+    );
     const since = new Date(now.getTime() - ADMIN_LOCKOUT.windowMs);
-    if ((await authFailureRepo.countSince(db, ipHash, since)) >= ADMIN_LOCKOUT.maxFailures) {
+    if (
+      (await authFailureRepo.countSince(db, [ipHash, legacy], since)) >= ADMIN_LOCKOUT.maxFailures
+    ) {
       throw adminLocked({ retryAfterSeconds: ADMIN_LOCKOUT.windowMs / 1000 });
     }
     if (safeEqual(token, adminToken)) return true;

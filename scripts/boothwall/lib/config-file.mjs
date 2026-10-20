@@ -3,9 +3,11 @@ import { pathToFileURL } from "node:url";
 
 import { CONFIG_FILE } from "./paths.mjs";
 
+let reloadVersion = 0;
+
 /** The current boothwall.config.ts (Node strips its types). Fresh on every call. */
 export async function readConfig() {
-  const url = `${pathToFileURL(CONFIG_FILE).href}?t=${Date.now()}`;
+  const url = `${pathToFileURL(CONFIG_FILE).href}?revision=${++reloadVersion}`;
   return (await import(url)).boothwallConfig;
 }
 

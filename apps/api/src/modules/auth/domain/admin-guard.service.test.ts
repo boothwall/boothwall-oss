@@ -9,6 +9,7 @@ import { ADMIN_LOCKED } from "./auth.errors";
 const attempt = (token: string) => ({
   db: {} as Db,
   token,
+  fingerprintKey: "fixture-only-client-fingerprint-key-32",
   adminToken: "right-passcode",
   clientIp: "203.0.113.7",
   now: new Date("2026-10-08T09:00:00.000Z"),

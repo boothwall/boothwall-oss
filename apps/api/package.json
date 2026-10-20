@@ -3,6 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./testing": "./src/testing/index.ts",
+    "./host": "./src/host/index.ts",
+    "./worker": "./src/index.ts"
+  },
   "scripts": {
     "dev": "cf dev",
     "build": "cf build",
@@ -25,7 +30,7 @@
     "@cloudflare/vite-plugin": "2.0.0-beta.sha-52b0dc0e9",
     "@cloudflare/workers-types": "^5.20261007.1",
     "@boothwall/tsconfig": "workspace:*",
-    "cf": "^1.0.0-beta.12",
+    "cf": "1.0.0-beta.12",
     "drizzle-kit": "^0.31.0",
     "vite": "^8.3.0",
     "vitest": "^5.0.3"

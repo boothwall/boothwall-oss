@@ -3,12 +3,12 @@ import {
   type PhotoStatsDTO,
   type PhotoStatus,
   photoStatusSchema,
-  type Tribe,
   tribeSchema,
   type WallStatsDTO,
 } from "@boothwall/shared";
 
 import type { PhotoRow } from "@/db/schema";
+import { parseReactionCounts } from "@/modules/reaction";
 
 export const toPhotoDTO = (row: PhotoRow, origin: string, signature?: string): PhotoDTO => {
   const url = (variant: "image" | "thumb") =>
@@ -22,11 +22,12 @@ export const toPhotoDTO = (row: PhotoRow, origin: string, signature?: string): P
     // Photos stored before thumbnails existed fall back to the full image.
     thumbUrl: url(row.thumbKey ? "thumb" : "image"),
     createdAt: row.createdAt.toISOString(),
+    reactions: parseReactionCounts(row.reactions),
   };
 };
 
 export const toWallStats = (counts: { tribe: string; value: number }[]): WallStatsDTO => {
-  const byTribe: Partial<Record<Tribe, number>> = {};
+  const byTribe: Record<string, number> = {};
   let total = 0;
   for (const { tribe, value } of counts) {
     const parsed = tribeSchema.safeParse(tribe);

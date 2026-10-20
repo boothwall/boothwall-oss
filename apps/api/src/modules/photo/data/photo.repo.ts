@@ -1,90 +1,50 @@
-/** Photo queries. The only file in this module that talks to D1. */
-import { type PhotoStatus, tribeSchema } from "@boothwall/shared";
-import {
-  and,
-  asc,
-  count,
-  desc,
-  eq,
-  getTableColumns,
-  gt,
-  gte,
-  isNull,
-  lt,
-  or,
-  type SQL,
-  sql,
-} from "drizzle-orm";
+/**
+ * Photo rows: finding, writing and removing them. With photo-list.repo and photo-count.repo,
+ * the only files in this module that talk to D1. Queries for a wall take its id; the
+ * retention purge and the per-client upload count deliberately span all walls.
+ */
+import type { PhotoStatus, WallId } from "@boothwall/shared";
+import { and, desc, eq, getTableColumns, lt, type SQL, sql } from "drizzle-orm";
 
 import type { Db } from "@/db/client";
 import { type NewPhotoRow, type PhotoRow, photos } from "@/db/schema";
-import type { PhotoCursor, PhotoListFilter } from "@/modules/photo/domain/photo.types";
 
-const visible = isNull(photos.removedAt);
+import { byClientSince, createdOnSince, ofWall, pendingOn, visible } from "./photo.scopes";
+import { photoCountRepo } from "./photo-count.repo";
+import { photoListRepo } from "./photo-list.repo";
 
-/** Category position in the config, so "sort by category" follows the phone's picker. */
-const categoryRank = sql<number>`CASE ${photos.tribe} ${sql.join(
-  tribeSchema.options.map((id, rank) => sql`WHEN ${id} THEN ${rank}`),
-  sql` `,
-)} ELSE ${tribeSchema.options.length} END`;
-
-/** `%` and `_` in a search are literal characters, not wildcards. */
-const containing = (text: string) => `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
-
-/** Rows after the cursor, in the same order the page was sorted by. */
-const after = (sort: PhotoListFilter["sort"], cursor: PhotoCursor): SQL | undefined => {
-  const at = new Date(cursor.createdAt);
-  if (sort === "oldest") {
-    return or(gt(photos.createdAt, at), and(eq(photos.createdAt, at), gt(photos.id, cursor.id)));
-  }
-  const newer = or(
-    lt(photos.createdAt, at),
-    and(eq(photos.createdAt, at), lt(photos.id, cursor.id)),
-  );
-  if (sort === "newest") return newer;
-  return or(
-    sql`${categoryRank} > ${cursor.rank}`,
-    and(sql`${categoryRank} = ${cursor.rank}`, newer),
-  );
-};
-
-const orderFor = (sort: PhotoListFilter["sort"]) => {
-  if (sort === "oldest") return [asc(photos.createdAt), asc(photos.id)];
-  const newest = [desc(photos.createdAt), desc(photos.id)];
-  return sort === "category" ? [asc(categoryRank), ...newest] : newest;
+/** The upload caps a new photo is admitted under: a count since a time, below a maximum. */
+export type PhotoAdmissionCaps = {
+  fingerprints: string[];
+  clientWindow: { since: Date; max: number };
+  clientDaily: { since: Date; max: number };
+  wallPending: number;
+  wallDaily: { since: Date; max: number };
 };
 
 export const photoRepo = {
-  async findByStatus(db: Db, status: PhotoStatus, limit: number): Promise<PhotoRow[]> {
+  ...photoListRepo,
+  ...photoCountRepo,
+  async findByStatus(
+    db: Db,
+    wallId: WallId,
+    status: PhotoStatus,
+    limit: number,
+  ): Promise<PhotoRow[]> {
     return db
       .select()
       .from(photos)
-      .where(and(visible, eq(photos.status, status)))
+      .where(and(ofWall(wallId), visible, eq(photos.status, status)))
       .orderBy(desc(status === "approved" ? photos.approvedAt : photos.createdAt))
       .limit(limit);
   },
 
-  /** Control panel list: one page in a stable order, plus its last row's category rank. */
-  async list(db: Db, filter: PhotoListFilter): Promise<(PhotoRow & { rank: number })[]> {
-    const { status, tribe, q, sort, cursor, limit } = filter;
-    return db
-      .select({ ...getTableColumns(photos), rank: categoryRank })
+  async findById(db: Db, wallId: WallId, id: string): Promise<PhotoRow | undefined> {
+    const [row] = await db
+      .select()
       .from(photos)
-      .where(
-        and(
-          visible,
-          status ? eq(photos.status, status) : undefined,
-          tribe ? eq(photos.tribe, tribe) : undefined,
-          q ? sql`${photos.caption} LIKE ${containing(q)} ESCAPE '\\'` : undefined,
-          cursor ? after(sort, cursor) : undefined,
-        ),
-      )
-      .orderBy(...orderFor(sort))
-      .limit(limit);
-  },
-
-  async findById(db: Db, id: string): Promise<PhotoRow | undefined> {
-    const [row] = await db.select().from(photos).where(eq(photos.id, id)).limit(1);
+      .where(and(ofWall(wallId), eq(photos.id, id)))
+      .limit(1);
     return row;
   },
 
@@ -92,79 +52,84 @@ export const photoRepo = {
     return db.select().from(photos).where(lt(photos.createdAt, cutoff));
   },
 
-  async countRecentByIpHash(db: Db, ipHash: string, since: Date): Promise<number> {
-    const [row] = await db
-      .select({ value: count() })
-      .from(photos)
-      .where(and(eq(photos.ipHash, ipHash), gte(photos.createdAt, since)));
-    return row?.value ?? 0;
-  },
-
-  async countCreatedSince(db: Db, since: Date): Promise<number> {
-    const [row] = await db
-      .select({ value: count() })
-      .from(photos)
-      .where(gte(photos.createdAt, since));
-    return row?.value ?? 0;
-  },
-
-  async countPending(db: Db): Promise<number> {
-    const [row] = await db
-      .select({ value: count() })
-      .from(photos)
-      .where(and(visible, eq(photos.status, "pending")));
-    return row?.value ?? 0;
-  },
-
-  async countApprovedByTribe(db: Db): Promise<{ tribe: string; value: number }[]> {
-    return db
-      .select({ tribe: photos.tribe, value: count() })
-      .from(photos)
-      .where(and(visible, eq(photos.status, "approved")))
-      .groupBy(photos.tribe);
-  },
-
-  /** Every photo still kept, counted per status and category. */
-  async countByStatusAndTribe(
+  /**
+   * Inserts the row only while every upload cap still has room, in one statement, so uploads
+   * arriving together can't all pass a count taken before any of them was written.
+   * Null when a cap is full.
+   */
+  async createIfUnder(
     db: Db,
-  ): Promise<{ status: PhotoStatus; tribe: string; value: number }[]> {
-    return db
-      .select({ status: photos.status, tribe: photos.tribe, value: count() })
-      .from(photos)
-      .where(visible)
-      .groupBy(photos.status, photos.tribe);
-  },
-
-  async create(db: Db, row: NewPhotoRow): Promise<PhotoRow> {
-    const [created] = await db.insert(photos).values(row).returning();
+    row: NewPhotoRow & { wallId: WallId },
+    caps: PhotoAdmissionCaps,
+  ): Promise<PhotoRow | null> {
+    const columns = getTableColumns(photos);
+    const values = Object.entries(row).flatMap(([key, value]) =>
+      value === undefined ? [] : [{ column: columns[key as keyof typeof columns], value }],
+    );
+    const under = (where: SQL | undefined, max: number) =>
+      sql`(SELECT count(*) FROM ${photos} WHERE ${where}) < ${max}`;
+    const inserted = await db.get<{ id: string } | undefined>(sql`
+      INSERT INTO ${photos} (${sql.join(
+        values.map(({ column }) => sql.identifier(column.name)),
+        sql`, `,
+      )})
+      SELECT ${sql.join(
+        values.map(({ column, value }) => sql.param(value, column)),
+        sql`, `,
+      )}
+      WHERE ${under(byClientSince(caps.fingerprints, caps.clientWindow.since), caps.clientWindow.max)}
+        AND ${under(byClientSince(caps.fingerprints, caps.clientDaily.since), caps.clientDaily.max)}
+        AND ${under(pendingOn(row.wallId), caps.wallPending)}
+        AND ${under(createdOnSince(row.wallId, caps.wallDaily.since), caps.wallDaily.max)}
+      RETURNING id`);
+    if (!inserted) return null;
+    const [created] = await db.select().from(photos).where(eq(photos.id, inserted.id)).limit(1);
     if (!created) throw new Error("Photo insert returned no row");
     return created;
   },
 
-  async approve(db: Db, id: string, approvedAt: Date): Promise<PhotoRow | undefined> {
+  /** `onlyIf` approves only from that status, in the same statement (no race with a person). */
+  async approve(
+    db: Db,
+    wallId: WallId,
+    id: string,
+    approvedAt: Date,
+    onlyIf?: PhotoStatus,
+  ): Promise<PhotoRow | undefined> {
     const [row] = await db
       .update(photos)
       .set({ status: "approved", approvedAt })
-      .where(and(eq(photos.id, id), visible))
+      .where(
+        and(
+          ofWall(wallId),
+          eq(photos.id, id),
+          visible,
+          onlyIf ? eq(photos.status, onlyIf) : undefined,
+        ),
+      )
       .returning();
     return row;
   },
 
   async update(
     db: Db,
+    wallId: WallId,
     id: string,
     values: Partial<Pick<PhotoRow, "caption" | "tribe" | "status" | "approvedAt" | "keep">>,
   ): Promise<PhotoRow | undefined> {
     const [row] = await db
       .update(photos)
       .set(values)
-      .where(and(eq(photos.id, id), visible))
+      .where(and(ofWall(wallId), eq(photos.id, id), visible))
       .returning();
     return row;
   },
 
-  async setRemoved(db: Db, id: string, removedAt: Date): Promise<void> {
-    await db.update(photos).set({ removedAt }).where(eq(photos.id, id));
+  async setRemoved(db: Db, wallId: WallId, id: string, removedAt: Date): Promise<void> {
+    await db
+      .update(photos)
+      .set({ removedAt })
+      .where(and(ofWall(wallId), eq(photos.id, id)));
   },
 
   async deleteById(db: Db, id: string): Promise<void> {

@@ -1,10 +1,5 @@
-import { appConfig } from "../../../app/app.config";
-
-/**
- * Most photos the wall keeps in memory and asks the API for. Demo mode keeps one per bundled
- * photo, so the pool never holds repeats and the counter reads "n / 52".
- */
-export const POOL_LIMIT = appConfig.simulation.enabled ? appConfig.simulation.photos : 80;
+/** Maximum live pool; demo mode supplies its own smaller snapshot. */
+export const POOL_LIMIT = 80;
 /** Without a socket within this window, load the first snapshot over HTTP instead of waiting. */
 export const EARLY_SNAPSHOT_MS = 1_500;
 /** Socket keepalive; the server answers each ping with a pong. */

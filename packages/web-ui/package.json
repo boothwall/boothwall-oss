@@ -1,0 +1,57 @@
+{
+  "name": "@boothwall/web-ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/theme/styles.css"
+  },
+  "imports": {
+    "#foundations": "./src/foundations/index.ts",
+    "#primitives": "./src/primitives/index.ts",
+    "#composites": "./src/composites/index.ts",
+    "#patterns": "./src/patterns/index.ts",
+    "#shells": "./src/shells/index.ts",
+    "#brand": "./src/brand/index.ts",
+    "#kit": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json && tsc -p preview/tsconfig.json",
+    "lint": "eslint src preview",
+    "test": "vitest run",
+    "preview:kit": "vite --config preview/vite.config.ts"
+  },
+  "dependencies": {
+    "@boothwall/brand": "workspace:*",
+    "@fontsource-variable/outfit": "^5.3.0",
+    "@fontsource/kalam": "^5.3.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.52.0",
+    "qrcode-generator": "^2.0.4",
+    "tailwind-merge": "^3.7.0"
+  },
+  "devDependencies": {
+    "@boothwall/shared": "workspace:*",
+    "@boothwall/tsconfig": "workspace:*",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "jsdom": "^30.1.2",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.3"
+  },
+  "peerDependencies": {
+    "react": "19.2.0",
+    "tailwindcss": "^4.3.3"
+  }
+}

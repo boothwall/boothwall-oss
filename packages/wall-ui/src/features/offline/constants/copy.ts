@@ -1,0 +1,1 @@
+export { offlineCopy } from "#copy";

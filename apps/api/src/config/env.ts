@@ -1,8 +1,9 @@
 import { z } from "zod";
 
-import type { AppBindings } from "@/core/runtime/bindings";
+import type { AppBindings } from "@/contracts/runtime";
 
 const configSchema = z.object({
+  CLIENT_FINGERPRINT_KEY: z.string().min(32).optional(),
   ADMIN_TOKEN: z.string().min(6, "ADMIN_TOKEN must be at least 6 characters"),
   ALLOWED_ORIGINS: z.string().transform((value) =>
     value
@@ -15,9 +16,6 @@ const configSchema = z.object({
 
 export type AppConfig = z.infer<typeof configSchema>;
 
-let cached: AppConfig | undefined;
-
 export function readConfig(env: AppBindings): AppConfig {
-  cached ??= configSchema.parse(env);
-  return cached;
+  return configSchema.parse(env);
 }

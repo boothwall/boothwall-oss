@@ -1,81 +1,65 @@
-import React, { useEffect, useMemo, useRef } from "react";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
+import React, { useMemo } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 
-import { color, fontSize, layout, radius, space, tracking } from "../../../../theme/tokens";
-import { wallCopy } from "../../constants/copy";
-import { EMPTY_HERO, GHOST_SLOTS, POLAROID, type SlotPosition } from "../../constants/layout";
-import { NATIVE_DRIVER } from "../../constants/motion";
+import { useWallCopy } from "#copy";
+import { EMPTY_WALL, type SlotPosition } from "#features/wall/constants/layout";
+import { GHOST_DRIFT_MS, GHOST_DRIFT_STEP_MS } from "#features/wall/constants/timing";
+import { useLoop } from "#platform/motion";
+import { color, fontSize, fontWeight, space, tracking } from "#theme/tokens";
+import { themedStyles, useThemedStyles } from "#theme/wallTheme";
+
 import { TiltedSurface } from "../primitives/TiltedSurface";
 
+/**
+ * The wall before the first photo: three blank polaroids fanned in the middle of the stage and
+ * one line under them. The join panel beside it already says how; this only says "you".
+ */
 export function EmptyWall() {
-  const { empty } = wallCopy;
-
+  const { wall: wallCopy } = useWallCopy();
   return (
     <>
-      {GHOST_SLOTS.map((slot, index) => (
+      {EMPTY_WALL.ghosts.map((slot, index) => (
         <GhostCard key={index} slot={slot} index={index} />
       ))}
-
-      <View style={styles.hero}>
-        <Text style={styles.eyebrow}>{empty.eyebrow}</Text>
-        <Text style={styles.title}>{empty.title}</Text>
-        <Text style={styles.body}>{empty.body}</Text>
-        <View style={styles.steps}>
-          {empty.steps.map((step, index) => (
-            <View key={step} style={styles.step}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>{index + 1}</Text>
-              </View>
-              <Text style={styles.stepText}>{step}</Text>
-            </View>
-          ))}
-        </View>
+      <View style={styles.headline} pointerEvents="none">
+        <Text style={styles.title}>{wallCopy.empty.title}</Text>
       </View>
     </>
   );
 }
 
 function GhostCard({ slot, index }: { slot: SlotPosition; index: number }) {
-  const drift = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const half = 3600 + index * 500;
-    const ease = { easing: Easing.inOut(Easing.sin), useNativeDriver: NATIVE_DRIVER };
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(drift, { toValue: 1, duration: half, ...ease }),
-        Animated.timing(drift, { toValue: 0, duration: half, ...ease }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [drift, index]);
+  const { wall: wallCopy } = useWallCopy();
+  const tint = useThemedStyles(themed);
+  const drift = useLoop(GHOST_DRIFT_MS + index * GHOST_DRIFT_STEP_MS);
 
   const style = useMemo(
     () => ({
-      opacity: drift.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.9] }),
+      width: slot.width,
+      opacity: drift.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0.95] }),
       transform: [
         { translateX: slot.x },
         {
           translateY: Animated.add(
-            drift.interpolate({ inputRange: [0, 1], outputRange: [-6, 6] }),
+            drift.interpolate({ inputRange: [0, 1], outputRange: [-5, 5] }),
             slot.y,
           ),
         },
         {
           rotate: drift.interpolate({
             inputRange: [0, 1],
-            outputRange: [`${slot.rotate - 1.5}deg`, `${slot.rotate + 1.5}deg`],
+            outputRange: [`${slot.rotate - 1}deg`, `${slot.rotate + 1}deg`],
           }),
         },
       ],
     }),
     [drift, slot],
   );
+  const image = slot.width - space.md;
 
   return (
     <TiltedSurface style={[styles.ghost, style]}>
-      <View style={styles.ghostImage}>
+      <View style={[styles.ghostImage, tint.ghostImage, { width: image, height: image }]}>
         <Text style={styles.ghostPlus}>+</Text>
       </View>
       <Text style={styles.ghostLabel}>{wallCopy.empty.ghost}</Text>
@@ -83,92 +67,57 @@ function GhostCard({ slot, index }: { slot: SlotPosition; index: number }) {
   );
 }
 
-const GHOST_IMAGE = POLAROID.width - space.md;
-
 const styles = StyleSheet.create({
-  hero: {
-    gap: space.md,
-    left: layout.safeX,
+  headline: {
+    alignItems: "center",
+    left: EMPTY_WALL.headline.left,
     position: "absolute",
-    top: EMPTY_HERO.top,
-    width: EMPTY_HERO.width,
-  },
-  eyebrow: {
-    color: color.brandPrimaryText,
-    fontSize: fontSize.caption,
-    fontWeight: "800",
-    letterSpacing: tracking.mark,
-    textTransform: "uppercase",
+    top: EMPTY_WALL.headline.top,
+    width: EMPTY_WALL.headline.width,
   },
   title: {
     color: color.textPrimary,
     fontSize: fontSize.title,
-    fontWeight: "800",
+    fontWeight: fontWeight.heavy,
     letterSpacing: tracking.title,
-    lineHeight: fontSize.title * 1.05,
-  },
-  body: {
-    color: color.textSecondary,
-    fontSize: fontSize.lead,
-    lineHeight: fontSize.lead * 1.4,
-  },
-  steps: {
-    flexDirection: "row",
-    gap: space.lg,
-    marginTop: space.sm,
-  },
-  step: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: space.sm,
-  },
-  stepNumber: {
-    alignItems: "center",
-    backgroundColor: color.brandPrimary,
-    borderRadius: radius.pill,
-    height: space.lg,
-    justifyContent: "center",
-    width: space.lg,
-  },
-  stepNumberText: {
-    color: color.onBrandPrimary,
-    fontSize: fontSize.caption,
-    fontWeight: "900",
-  },
-  stepText: {
-    color: color.textPrimary,
-    fontSize: fontSize.body,
-    fontWeight: "700",
+    textAlign: "center",
   },
   ghost: {
     alignItems: "center",
-    borderColor: color.textSecondary,
+    borderColor: color.textMuted,
     borderRadius: space.xs,
     borderStyle: "dashed",
     borderWidth: 2,
-    gap: space.xs,
     left: 0,
-    padding: space.sm,
+    paddingBottom: space.md,
+    paddingHorizontal: space.sm,
+    paddingTop: space.sm,
     position: "absolute",
     top: 0,
-    width: POLAROID.width,
   },
   ghostImage: {
+    marginBottom: space.sm,
     alignItems: "center",
-    backgroundColor: color.surface,
+    alignSelf: "center",
     borderRadius: 2,
-    height: GHOST_IMAGE,
     justifyContent: "center",
-    width: GHOST_IMAGE,
   },
   ghostPlus: {
     color: color.textSecondary,
     fontSize: fontSize.title,
-    fontWeight: "300",
+    fontWeight: fontWeight.regular,
   },
   ghostLabel: {
+    alignSelf: "center",
     color: color.textSecondary,
-    fontSize: fontSize.body,
-    fontWeight: "800",
+    fontSize: fontSize.lead,
+    fontWeight: fontWeight.heavy,
   },
 });
+
+/** The blank photo area in the theme's surface. */
+const themed = themedStyles((colors) =>
+  StyleSheet.create({
+    ghostImage: { backgroundColor: colors.surface },
+  }),
+);

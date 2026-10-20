@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@import "../../../src/theme/styles.css";
+
+/* The brand colours an app supplies (as an app's own brand.css does). */
+:root {
+  --u-paper: #fffcf5;
+  --u-primary: #cc4128;
+  --u-primary-text: #ff6a4d;
+  --u-primary-on-paper: #cc4128;
+  --u-on-primary: #ffffff;
+  --u-primary-glow: rgb(204 65 40 / 0.5);
+  --u-secondary: #8fa9e5;
+  --u-secondary-on-paper: #345394;
+  --u-tertiary: #6555e8;
+}
+
+@source "../";

@@ -9,3 +9,10 @@ export function connectionPhase(status: FeedStatus, loaded: boolean): Connection
   if (status === "live") return "loading";
   return "connecting";
 }
+
+/**
+ * The wall is up but can't refresh: it runs on a saved wall before the API answered, or on what
+ * it had before the link dropped. Demo mode never is.
+ */
+export const isShowingStale = (status: FeedStatus, loaded: boolean, liveLoaded: boolean) =>
+  loaded && (status === "offline" || !liveLoaded);

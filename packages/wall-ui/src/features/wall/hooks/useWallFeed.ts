@@ -1,178 +1,122 @@
-import type { RemoteCommand } from "@boothwall/shared";
+import type { RemoteMessage, WallConnection, WallSnapshotDTO, WallTarget } from "@boothwall/shared";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { AppState } from "react-native";
 
-import { appConfig } from "../../../app/app.config";
-import { EARLY_SNAPSHOT_MS, PING_MS, SILENT_SOCKET_MS } from "../constants/feed";
-import { fetchWall } from "../data/fetchWall";
+import { appConfig } from "#app/config";
+import { type CachedWall, useWallCache } from "#features/offline";
+import type { KeyValueStore } from "#platform/storage";
+
+import { connectLive } from "../data/connectLive";
+import { DEMO_PHOTO_COUNT } from "../data/demoPhotos";
 import { simulatedSnapshot, startSimulatedEvents } from "../data/simulatedFeed";
-import { parseWallEvent, reconnectDelayMs, wallSocketUrl } from "../data/wallSocket";
-import { connectionPhase, type FeedStatus } from "../state/connectionPhase";
-import { initialWallState, type WallAction, wallReducer } from "../state/wallState";
-
-type LiveOptions = {
-  /** false in simulation: keep the socket for remote commands, ignore photo traffic. */
-  photos: boolean;
-  dispatch: (action: WallAction) => void;
-  setStatus: (status: FeedStatus) => void;
-  onLoaded: () => void;
-  onFailure: () => void;
-  onRemote: (command: RemoteCommand) => void;
-};
-
-/** HTTP snapshot, then live events over the socket; the snapshot is refetched on every reconnect. */
-function connectLive({ photos, dispatch, setStatus, onLoaded, onFailure, onRemote }: LiveOptions) {
-  let socket: WebSocket | null = null;
-  let retryTimer: ReturnType<typeof setTimeout> | undefined;
-  let pingTimer: ReturnType<typeof setInterval> | undefined;
-  let snapshotTimer: ReturnType<typeof setTimeout> | undefined;
-  let attempt = 0;
-  let snapshotAttempt = 0;
-  let lastHeard = 0;
-  let disposed = false;
-  let snapshotSeq = 0;
-
-  const loadSnapshot = () => {
-    if (!photos) return;
-    if (snapshotTimer !== undefined) clearTimeout(snapshotTimer);
-    const seq = ++snapshotSeq;
-    fetchWall()
-      .then((snapshot) => {
-        if (disposed || seq !== snapshotSeq) return;
-        snapshotAttempt = 0;
-        dispatch({ type: "snapshot", snapshot });
-        onLoaded();
-      })
-      .catch(() => {
-        if (disposed || seq !== snapshotSeq) return;
-        // On a live socket, dropping it makes the reconnect backoff retry both together.
-        // Without one (still connecting, or HTTP-only), retry the snapshot on its own backoff.
-        if (socket?.readyState === WebSocket.OPEN) drop();
-        else snapshotTimer = setTimeout(loadSnapshot, reconnectDelayMs(snapshotAttempt++));
-      });
-  };
-
-  const handleClose = () => {
-    socket = null;
-    if (pingTimer !== undefined) clearInterval(pingTimer);
-    if (disposed) return;
-    if (photos) {
-      setStatus("offline");
-      onFailure();
-    }
-    retryTimer = setTimeout(connect, reconnectDelayMs(attempt++));
-  };
-
-  /** Close without waiting for the close handshake, which a dead link may never finish. */
-  const drop = () => {
-    const dead = socket;
-    if (!dead) return;
-    dead.onopen = dead.onmessage = dead.onerror = dead.onclose = null;
-    try {
-      dead.close();
-    } catch {
-      // Already closed.
-    }
-    handleClose();
-  };
-
-  const connect = () => {
-    if (retryTimer !== undefined) clearTimeout(retryTimer);
-    const ws = new WebSocket(wallSocketUrl(appConfig.apiBaseUrl));
-    socket = ws;
-
-    ws.onopen = () => {
-      // The socket beat the early HTTP fallback: the snapshot below covers start-up too.
-      clearTimeout(earlyTimer);
-      lastHeard = Date.now();
-      if (photos) setStatus("live");
-      loadSnapshot();
-      pingTimer = setInterval(() => {
-        // Two missed pongs, or a wake from sleep: the link is gone even if no close arrived.
-        if (Date.now() - lastHeard > SILENT_SOCKET_MS) drop();
-        else if (ws.readyState === WebSocket.OPEN) ws.send("ping");
-      }, PING_MS);
-    };
-
-    ws.onmessage = ({ data }) => {
-      lastHeard = Date.now();
-      // Reset the backoff only once the server actually talks: a socket that opens and drops
-      // straight away would otherwise retry every second.
-      attempt = 0;
-      // Pongs, malformed and unknown events are dropped quietly.
-      const event = parseWallEvent(data);
-      if (!event) return;
-      if (event.type === "remote.command") onRemote(event.command);
-      else if (photos) dispatch({ type: "event", event });
-    };
-
-    ws.onclose = handleClose;
-    ws.onerror = drop;
-  };
-
-  // Back from the background or a sleeping screen: reconnect now and refetch, instead of
-  // waiting out a long backoff or a stale socket.
-  const appState = AppState.addEventListener("change", (next) => {
-    if (next !== "active" || disposed) return;
-    if (socket?.readyState === WebSocket.OPEN) {
-      if (Date.now() - lastHeard > SILENT_SOCKET_MS) drop();
-      else loadSnapshot();
-    } else if (!socket) {
-      attempt = 0;
-      connect();
-    }
-  });
-
-  // Skip the HTTP snapshot when the socket opens quickly (its onopen fetches one); keep it as
-  // the fallback when the socket can't connect at all.
-  const earlyTimer = setTimeout(loadSnapshot, EARLY_SNAPSHOT_MS);
-  connect();
-
-  return () => {
-    disposed = true;
-    appState.remove();
-    clearTimeout(earlyTimer);
-    if (retryTimer !== undefined) clearTimeout(retryTimer);
-    if (snapshotTimer !== undefined) clearTimeout(snapshotTimer);
-    if (pingTimer !== undefined) clearInterval(pingTimer);
-    if (socket) {
-      socket.onopen = socket.onmessage = socket.onerror = socket.onclose = null;
-      socket.close();
-    }
-  };
-}
+import { connectionPhase, type FeedStatus, isShowingStale } from "../state/connectionPhase";
+import { initialWallState, wallReducer } from "../state/wallState";
+import type { WallDisplaySource } from "../types";
 
 type WallFeedOptions = {
-  onRemote: (command: RemoteCommand) => void;
+  onRemote: (command: RemoteMessage) => void;
+  /** Which wall to show. */
+  target: WallTarget;
+  displayConnection?: WallConnection;
+  onAccessRevoked?: () => void;
+  source?: WallDisplaySource;
+  /** Where the last live wall is kept for offline starts; none means no cache. */
+  store?: KeyValueStore;
   /** Forces demo mode on or off; defaults to boothwall.config.ts. */
   demo?: boolean;
 };
 
-export function useWallFeed({ onRemote, demo }: WallFeedOptions) {
-  const [state, dispatch] = useReducer(wallReducer, initialWallState);
+export function useWallFeed({
+  onRemote,
+  target,
+  store,
+  demo,
+  displayConnection,
+  onAccessRevoked,
+  source,
+}: WallFeedOptions) {
+  const [state, dispatch] = useReducer(wallReducer, {
+    ...initialWallState,
+    settings: displayConnection?.initialSettings ?? initialWallState.settings,
+  });
   const simulation = useMemo(
     () => ({ ...appConfig.simulation, enabled: demo ?? appConfig.simulation.enabled }),
     [demo],
   );
   const [status, setStatus] = useState<FeedStatus>(simulation.enabled ? "simulated" : "connecting");
+  // Something is on the wall (live or saved), and whether any of it came from the API yet.
+  const [revoked, setRevoked] = useState(false);
+  const initialSettings = useRef(displayConnection?.initialSettings ?? initialWallState.settings);
   const [loaded, setLoaded] = useState(false);
+  const [liveLoaded, setLiveLoaded] = useState(false);
   const [attempts, setAttempts] = useState(0);
   // Latest handler without reconnecting the socket when it changes.
   const remoteRef = useRef(onRemote);
   remoteRef.current = onRemote;
 
+  const { wallId, screenToken } = target;
+  const apiBaseUrl = displayConnection?.apiBaseUrl ?? appConfig.apiBaseUrl;
+  const revokedRef = useRef(onAccessRevoked);
+  revokedRef.current = onAccessRevoked;
   useEffect(() => {
+    if (source) {
+      let active = true;
+      const revoke = () => {
+        if (!active) return;
+        setRevoked(true);
+        setStatus("offline");
+        revokedRef.current?.();
+      };
+      setRevoked(false);
+      const stop = source.connect({
+        snapshot: (snapshot) => {
+          if (!active) return;
+          dispatch({ type: "snapshot", snapshot });
+          setLoaded(true);
+          setLiveLoaded(true);
+        },
+        event: (event) => {
+          if (!active) return;
+          if (event.type === "remote.command") remoteRef.current(event.command);
+          else if (event.type === "wall.access-changed") revoke();
+          else if (event.type === "settings.updated")
+            dispatch({ type: "settings", settings: event.settings });
+          else if (event.type === "photo.reactions")
+            dispatch({ type: "reactions", photoId: event.photoId, counts: event.counts });
+          else dispatch({ type: "event", event });
+        },
+        status: (next) => {
+          if (active) setStatus(next);
+        },
+        failure: () => {
+          if (active) setAttempts((n) => n + 1);
+        },
+        revoked: revoke,
+      });
+      return () => {
+        active = false;
+        stop();
+      };
+    }
     const disconnect = connectLive({
+      target: { wallId, screenToken },
+      apiBaseUrl,
+      onAccessRevoked: () => {
+        setRevoked(true);
+        revokedRef.current?.();
+      },
       photos: !simulation.enabled,
       dispatch,
       setStatus,
-      onLoaded: () => setLoaded(true),
+      onLoaded: () => {
+        setLoaded(true);
+        setLiveLoaded(true);
+      },
       onFailure: () => setAttempts((n) => n + 1),
       onRemote: (command) => remoteRef.current(command),
     });
     if (!simulation.enabled) return disconnect;
 
-    const snapshot = simulatedSnapshot(simulation.photos);
+    const snapshot = { ...simulatedSnapshot(DEMO_PHOTO_COUNT), settings: initialSettings.current };
     dispatch({ type: "snapshot", snapshot });
     const stopSimulation = startSimulatedEvents(
       snapshot.photos,
@@ -183,14 +127,37 @@ export function useWallFeed({ onRemote, demo }: WallFeedOptions) {
       stopSimulation();
       disconnect();
     };
-  }, [simulation]);
+  }, [simulation, wallId, screenToken, apiBaseUrl, source]);
+
+  const live = useMemo<WallSnapshotDTO | null>(
+    () =>
+      liveLoaded && !simulation.enabled
+        ? { photos: state.pool, stats: state.stats, settings: state.settings }
+        : null,
+    [liveLoaded, simulation.enabled, state.pool, state.stats, state.settings],
+  );
+  const restore = useCallback(({ snapshot }: CachedWall) => {
+    dispatch({ type: "snapshot", snapshot });
+    setLoaded(true);
+  }, []);
+  useWallCache({
+    store: simulation.enabled || revoked ? undefined : store,
+    wallId:
+      displayConnection?.storageNamespace ??
+      JSON.stringify([apiBaseUrl.replace(/\/+$/, ""), wallId]),
+    live,
+    onRestore: restore,
+  });
 
   const settle = useCallback((photoId: string) => dispatch({ type: "settled", photoId }), []);
-  const rotate = useCallback(() => dispatch({ type: "rotate" }), []);
-  const show = useCallback((photoId: string) => dispatch({ type: "show", photoId }), []);
+  const turnPage = useCallback((slots: (string | null)[]) => dispatch({ type: "page", slots }), []);
   const pin = useCallback((ids: string[]) => dispatch({ type: "pin", ids }), []);
 
-  const connection = { phase: connectionPhase(status, loaded), attempts };
+  const connection = {
+    phase: connectionPhase(status, loaded),
+    attempts,
+    stale: isShowingStale(status, loaded, liveLoaded),
+  };
 
-  return { state, status, connection, settle, rotate, show, pin };
+  return { state, status, connection, settle, turnPage, pin, revoked };
 }

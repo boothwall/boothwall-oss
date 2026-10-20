@@ -1,0 +1,1 @@
+export { reportFullyDrawnOnce } from "./fullyDrawn";

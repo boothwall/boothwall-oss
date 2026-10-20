@@ -1,17 +1,27 @@
-import { type PhotoDTO, TRIBES } from "@boothwall/shared";
+import { type PhotoDTO, printedCategory } from "@boothwall/shared";
 import React, { memo, useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 
-import { color, fontSize, radius, space } from "../../../../theme/tokens";
-import { wallCopy } from "../../constants/copy";
-import { CANVAS_HEIGHT, NOW_BAR } from "../../constants/layout";
-import { NATIVE_DRIVER } from "../../constants/motion";
+import { useWallCopy } from "#copy";
+import { FOOTER, SPOTLIGHT, STAGE } from "#features/wall/constants/layout";
+import { useWallSettings } from "#features/wall/hooks/useWallSettings";
+import { NATIVE_DRIVER } from "#platform/motion";
+import { CANVAS_HEIGHT, color, fontSize, layer, layout, radius, space } from "#theme/tokens";
+import { themedStyles, useThemedStyles } from "#theme/wallTheme";
 
 export type IncomingToastProps = {
   photo: PhotoDTO | null;
+  /** A photo is open: the toast moves under its details, clear of the big card. */
+  spotlightOpen: boolean;
 };
 
-export const IncomingToast = memo(function IncomingToast({ photo }: IncomingToastProps) {
+export const IncomingToast = memo(function IncomingToast({
+  photo,
+  spotlightOpen,
+}: IncomingToastProps) {
+  const { wall: wallCopy } = useWallCopy();
+  const { categories } = useWallSettings();
+  const tint = useThemedStyles(themed);
   const show = useRef(new Animated.Value(0)).current;
   const visible = photo !== null;
 
@@ -33,11 +43,19 @@ export const IncomingToast = memo(function IncomingToast({ photo }: IncomingToas
   );
 
   return (
-    <Animated.View style={[styles.toast, style]} pointerEvents="none">
-      <View style={styles.dot} />
+    <Animated.View
+      style={[styles.toast, tint.toast, spotlightOpen && styles.besideSpotlight, style]}
+      pointerEvents="none"
+    >
+      <View style={[styles.dot, tint.dot]} />
       <Text style={styles.text}>
         <Text style={styles.strong}>{wallCopy.incoming.title}</Text>
-        {photo ? `  ·  ${TRIBES[photo.tribe]}  ·  ${wallCopy.incoming.upNext}` : ""}
+        {photo
+          ? [printedCategory(categories, photo.tribe), wallCopy.incoming.upNext]
+              .filter(Boolean)
+              .map((part) => `  ·  ${part}`)
+              .join("")
+          : ""}
       </Text>
     </Animated.View>
   );
@@ -46,21 +64,22 @@ export const IncomingToast = memo(function IncomingToast({ photo }: IncomingToas
 const styles = StyleSheet.create({
   toast: {
     alignItems: "center",
-    backgroundColor: color.canvas,
-    borderColor: color.brandPrimary,
     borderRadius: radius.pill,
     borderWidth: 1,
-    bottom: CANVAS_HEIGHT - NOW_BAR.top + space.sm,
+    // Just above the now-showing bar, on the safe line.
+    bottom: CANVAS_HEIGHT - FOOTER.top + layout.footerGap,
     flexDirection: "row",
     gap: space.sm,
-    left: NOW_BAR.left,
+    left: STAGE.left,
     paddingHorizontal: space.md,
     paddingVertical: space.xs + 2,
     position: "absolute",
-    zIndex: 70,
+    zIndex: layer.toast,
+  },
+  besideSpotlight: {
+    left: SPOTLIGHT.detailsLeft,
   },
   dot: {
-    backgroundColor: color.brandPrimary,
     borderRadius: radius.pill,
     height: space.sm,
     width: space.sm,
@@ -75,3 +94,11 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 });
+
+/** The toast's canvas, its accent edge and dot. */
+const themed = themedStyles((colors) =>
+  StyleSheet.create({
+    toast: { backgroundColor: colors.canvas, borderColor: colors.brandPrimary },
+    dot: { backgroundColor: colors.brandPrimary },
+  }),
+);

@@ -1,84 +1,122 @@
-import { EVENT } from "@boothwall/shared";
-import React, { memo, useMemo } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import type { EventPresentation } from "@boothwall/shared";
+import React, { memo } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
-import logo from "../../../../assets/brand/logo.png";
-import { color, fontSize, layout, size, space } from "../../../../theme/tokens";
-import { wallCopy } from "../../constants/copy";
-import { EDGE, NOW_BAR } from "../../constants/layout";
-import type { FeedStatus } from "../../state/connectionPhase";
-import { imageSource, useImageAspect } from "../../utils/bundledImage";
+import logo from "#assets/brand/logo.png";
+import { useWallCopy } from "#copy";
+import { HEADER } from "#features/wall/constants/layout";
+import { useWallLook } from "#features/wall/hooks/useWallLook";
+import { useWallSettings } from "#features/wall/hooks/useWallSettings";
+import type { FeedStatus } from "#features/wall/state/connectionPhase";
+import { imageSource } from "#platform/assets";
+import { useWallPresentation } from "#platform/connection";
+import { color, fontSize, fontWeight, layer, size, space } from "#theme/tokens";
+import { themedStyles, useThemedStyles } from "#theme/wallTheme";
+
 import { PopNumber } from "../primitives/PopNumber";
-import { DemoChip } from "./DemoChip";
-import { StatusPill } from "./StatusPill";
+import { BadgeChip } from "./BadgeChip";
+import { BRAND_INK_LEFT, HeaderLogo } from "./HeaderLogo";
+import { LivePill } from "./LivePill";
+import { SplitHeader } from "./SplitHeader";
 import { YearMark } from "./YearMark";
-
-const statusTone = {
-  connecting: "pending",
-  live: "success",
-  offline: "danger",
-  simulated: "pending",
-} as const;
 
 const LOGO = imageSource(logo);
 
 export type TopBarProps = {
   total: number;
   status: FeedStatus;
+  /** The event is over: the wall holds still, so there is no Live to show. */
+  ended?: boolean;
+  /** Said in the Live pill instead of its state, e.g. that the wall shows saved photos. */
+  notice?: string;
 };
 
-export const TopBar = memo(function TopBar({ total, status }: TopBarProps) {
-  // Any logo works: its width follows the image's own aspect ratio at a fixed height.
-  // On the web the ratio arrives once the image has loaded; until then the logo takes no room.
-  const aspect = useImageAspect(logo);
-  const logoStyle = useMemo(
-    () => [styles.logo, { width: size.logoHeight * (aspect ?? 0) }],
-    [aspect],
-  );
-  return (
-    <View style={styles.bar}>
-      <View style={styles.brand}>
-        <Image
-          source={LOGO}
-          style={logoStyle}
-          resizeMode="contain"
-          accessibilityLabel={EVENT.name}
-        />
-        <YearMark />
-        <View style={styles.divider} />
-        <DemoChip />
-      </View>
-      <View style={styles.meta}>
-        <Text style={styles.hashtag}>{wallCopy.hashtag}</Text>
-        <View style={styles.momentsRow}>
-          <PopNumber value={total} style={styles.momentsCount} />
-          <Text style={styles.moments}>{wallCopy.moments(total)}</Text>
-        </View>
-        <StatusPill tone={statusTone[status]} label={wallCopy.status[status]} />
-      </View>
-    </View>
+/** The header zone, in the classic look or split (`wall.header` in boothwall.config.ts). */
+export const TopBar = memo(function TopBar(props: TopBarProps) {
+  const presentation = useWallPresentation();
+  return useWallLook().header === "split" ? (
+    <SplitHeader {...props} presentation={presentation} />
+  ) : (
+    <ClassicHeader {...props} presentation={presentation} />
   );
 });
 
+/**
+ * The classic header: the logo lockup at TV size and the stacked year on the left; the hashtag,
+ * the photo count and the Live pill on the right. An empty wall shows no count, only the pill.
+ */
+function ClassicHeader({
+  total,
+  status,
+  ended = false,
+  notice,
+  presentation: { badge, venue, logoUrl },
+}: TopBarProps & { presentation: EventPresentation }) {
+  const { wall: wallCopy } = useWallCopy();
+  const { eventName, eventHashtag } = useWallSettings();
+  const tint = useThemedStyles(themed);
+  return (
+    <View style={styles.bar} testID="wall-header">
+      <View style={styles.brand}>
+        <HeaderLogo
+          url={logoUrl}
+          image={logo}
+          source={LOGO}
+          height={size.logoHeight}
+          inkLeft={BRAND_INK_LEFT}
+          label={eventName}
+          imageID="wall-logo"
+        />
+        <YearMark />
+        {venue ? (
+          <Text style={styles.venue} numberOfLines={1}>
+            {venue}
+          </Text>
+        ) : null}
+        {badge ? (
+          <>
+            <View style={styles.divider} />
+            <BadgeChip label={badge} />
+          </>
+        ) : null}
+      </View>
+      <View style={styles.meta}>
+        <Text style={[styles.hashtag, tint.hashtag]}>{eventHashtag}</Text>
+        {total > 0 && (
+          <View
+            style={styles.count}
+            accessible
+            accessibilityLabel={`${total} ${wallCopy.moments(total)}`}
+          >
+            <PopNumber value={total} style={styles.countNumber} />
+            <Text style={styles.countLabel}>{wallCopy.moments(total)}</Text>
+          </View>
+        )}
+        {!ended && <LivePill status={status} label={notice} />}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  // The header zone: everything centred on one line, the logo's ink on the safe line.
   bar: {
     alignItems: "center",
     flexDirection: "row",
+    height: HEADER.height,
     justifyContent: "space-between",
-    left: NOW_BAR.left,
+    left: HEADER.left,
     position: "absolute",
-    right: EDGE,
-    top: layout.safeY - space.sm,
-    zIndex: 50,
+    top: HEADER.top,
+    width: HEADER.width,
+    zIndex: layer.chrome,
   },
   brand: {
     alignItems: "center",
     flexDirection: "row",
-    gap: space.md,
+    gap: space.sm + 2,
   },
-  logo: {
-    height: size.logoHeight,
-  },
+  venue: { color: color.textSecondary, fontSize: fontSize.caption, maxWidth: size.logoHeight * 3 },
   divider: {
     backgroundColor: color.border,
     height: space.lg,
@@ -87,26 +125,32 @@ const styles = StyleSheet.create({
   meta: {
     alignItems: "center",
     flexDirection: "row",
-    gap: space.md,
+    gap: space.lg,
   },
   hashtag: {
-    color: color.brandPrimaryText,
     fontSize: fontSize.lead,
-    fontWeight: "800",
+    fontWeight: fontWeight.heavy,
   },
-  momentsRow: {
+  count: {
     alignItems: "center",
     flexDirection: "row",
-    gap: space.xs + 1,
+    gap: space.xs + 2,
   },
-  momentsCount: {
+  countNumber: {
     color: color.textPrimary,
-    fontSize: fontSize.caption + 3,
-    fontWeight: "800",
+    fontSize: fontSize.lead,
+    fontWeight: fontWeight.heavy,
   },
-  moments: {
+  countLabel: {
     color: color.textSecondary,
-    fontSize: fontSize.caption + 1,
-    fontWeight: "600",
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.semibold,
   },
 });
+
+/** The accent on the event hashtag. */
+const themed = themedStyles((colors) =>
+  StyleSheet.create({
+    hashtag: { color: colors.brandPrimaryText },
+  }),
+);

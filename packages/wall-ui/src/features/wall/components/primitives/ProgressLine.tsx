@@ -1,8 +1,9 @@
 import React, { memo, useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, StyleSheet, View } from "react-native";
 
-import { color, radius, size } from "../../../../theme/tokens";
-import { NATIVE_DRIVER } from "../../constants/motion";
+import { NATIVE_DRIVER } from "#platform/motion";
+import { color, radius, size } from "#theme/tokens";
+import { themedStyles, useThemedStyles } from "#theme/wallTheme";
 
 export type ProgressLineProps = {
   width: number;
@@ -20,6 +21,7 @@ export const ProgressLine = memo(function ProgressLine({
   paused,
   thickness = size.barTrack,
 }: ProgressLineProps) {
+  const tint = useThemedStyles(themed);
   const progress = useRef(new Animated.Value(0)).current;
   const lastCycle = useRef(cycleKey);
 
@@ -53,7 +55,7 @@ export const ProgressLine = memo(function ProgressLine({
 
   return (
     <View style={[styles.track, { width, height: thickness }]}>
-      <Animated.View style={[styles.fill, { height: thickness }, fillStyle]} />
+      <Animated.View style={[tint.fill, { height: thickness }, fillStyle]} />
     </View>
   );
 });
@@ -64,7 +66,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     overflow: "hidden",
   },
-  fill: {
-    backgroundColor: color.brandPrimary,
-  },
 });
+
+/** The line's accent fill. */
+const themed = themedStyles((colors) =>
+  StyleSheet.create({
+    fill: { backgroundColor: colors.brandPrimary },
+  }),
+);

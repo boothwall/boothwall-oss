@@ -50,7 +50,7 @@ export default tseslint.config(
     languageOptions: { globals: { ...globals.jest } },
   },
   {
-    // The shared wall also runs in the browser: Vega-only APIs belong in apps/tv.
+    // The shared wall also runs in the browser: Vega-only APIs belong in apps/tv-vega.
     files: ["packages/wall-ui/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
@@ -59,11 +59,39 @@ export default tseslint.config(
           patterns: [
             {
               group: ["@amazon-devices/*"],
-              message: "Keep Vega APIs in apps/tv and pass them in (see RemoteInputHook).",
+              message: "Keep Vega APIs in apps/tv-vega and pass them in (see RemoteInputHook).",
             },
           ],
         },
       ],
     },
+  },
+  {
+    // The web kit is shared with other apps: no app config or domain code, data comes in as props.
+    // The brand package is artwork only, so its logos may come in by name.
+    files: ["packages/web-ui/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@boothwall/*", "!@boothwall/brand", "!@boothwall/brand/*", "@/*"],
+              message: "Keep @boothwall/web-ui brand-neutral: pass config and copy in as props.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // The kit's preview is an app, not the kit: it may pull the brand's colours in.
+    files: ["packages/web-ui/preview/**/*.{ts,tsx}"],
+    rules: { "no-restricted-imports": "off" },
+  },
+  {
+    // No React on the API or in deploy configs: the `use*` helpers there are not hooks.
+    files: ["apps/api/**/*.ts", "**/cloudflare.config.ts"],
+    rules: { "react-hooks/rules-of-hooks": "off" },
   },
 );

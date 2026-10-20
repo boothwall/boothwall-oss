@@ -25,6 +25,8 @@ function sharedConfig(): Plugin {
 }
 
 export default defineConfig({
+  // `pnpm demo --lan`: Vite's own CORS admits only localhost, so the Worker's rules decide instead.
+  server: process.env.BOOTHWALL_DEMO_LAN ? { host: "0.0.0.0", cors: false } : {},
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   plugins: [sharedConfig(), cloudflare()],
 });

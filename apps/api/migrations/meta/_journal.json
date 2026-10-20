@@ -43,6 +43,41 @@
       "when": 1791635327127,
       "tag": "0005_keep_photos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791708595681,
+      "tag": "0006_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791715424818,
+      "tag": "0007_walls_and_reactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791718729266,
+      "tag": "0008_photo_analysis",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1791966079809,
+      "tag": "0009_client_fingerprints",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1791968697058,
+      "tag": "0010_settings_authority",
+      "breakpoints": true
     }
   ]
 }

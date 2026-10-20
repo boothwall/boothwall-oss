@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="220" viewBox="0 0 1040 220">
+  <defs>
+    <linearGradient id="warm" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5EEAD4"/>
+      <stop offset="1" stop-color="#22D3B6"/>
+    </linearGradient>
+  </defs>
+  <!-- Two overlapping rings: a made-up event mark for the example. -->
+  <circle cx="86" cy="110" r="58" fill="none" stroke="#22D3B6" stroke-width="22"/>
+  <circle cx="146" cy="110" r="58" fill="none" stroke="#FF5C8A" stroke-width="22" opacity="0.9"/>
+  <text x="236" y="146" font-family="Avenir Next" font-weight="800" font-size="104" letter-spacing="-2" fill="#FFFFFF">Acme<tspan fill="url(#warm)">DevDays</tspan></text>
+</svg>

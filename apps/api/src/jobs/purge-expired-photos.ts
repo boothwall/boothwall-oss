@@ -11,6 +11,11 @@ export async function purgeExpiredPhotos(env: AppBindings): Promise<void> {
     { db, bucket: env.PHOTOS },
     { retentionDays: readConfig(env).RETENTION_DAYS },
   );
-  await adminGuardService.purge(db, new Date());
+  await purgeExpiredAdminFailures(env);
   console.info(`purge-expired-photos: removed ${purged} photo(s)`);
+}
+
+/** Shared hygiene for hosts that provide their own photo retention policy. */
+export async function purgeExpiredAdminFailures(env: Pick<AppBindings, "DB">): Promise<void> {
+  await adminGuardService.purge(createDb(env.DB), new Date());
 }

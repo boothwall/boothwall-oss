@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <!-- The glow behind the phone pages' header: amber from the spark, violet and blue from the photo. -->
+  <defs>
+    <radialGradient id="amber" cx="0.2" cy="0.35" r="0.45"><stop offset="0" stop-color="#FFB020" stop-opacity="0.5"/><stop offset="1" stop-color="#FFB020" stop-opacity="0"/></radialGradient>
+    <radialGradient id="violet" cx="0.75" cy="0.3" r="0.5"><stop offset="0" stop-color="#6555E8" stop-opacity="0.6"/><stop offset="1" stop-color="#6555E8" stop-opacity="0"/></radialGradient>
+    <radialGradient id="blue" cx="0.55" cy="0.75" r="0.45"><stop offset="0" stop-color="#148CFF" stop-opacity="0.4"/><stop offset="1" stop-color="#148CFF" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="1600" height="1000" class="canvas" fill="#0B1020"/>
+  <rect width="1600" height="1000" fill="url(#violet)"/>
+  <rect width="1600" height="1000" fill="url(#blue)"/>
+  <rect width="1600" height="1000" fill="url(#amber)"/>
+</svg>

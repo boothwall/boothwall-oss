@@ -7,7 +7,8 @@ export const listPhotosQuerySchema = z.object({
 
 /** Multipart fields of POST /photos (the image itself is validated in the service). */
 export const uploadFieldsSchema = z.object({
-  caption: captionSchema.default(""),
+  // prefault, not default: a missing caption goes through the schema and becomes null, not "".
+  caption: captionSchema.prefault(""),
   tribe: tribeSchema,
   consent: z.literal("true", { error: "Consent is required to publish a photo." }),
 });

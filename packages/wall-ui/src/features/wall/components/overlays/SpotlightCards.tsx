@@ -1,27 +1,30 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, StyleSheet } from "react-native";
+import { Animated, Easing, StyleSheet, View } from "react-native";
 
 import {
-  CANVAS_HEIGHT,
+  CARD_REACH,
   type PlacedPhoto,
-  POLAROID,
   type SlotPosition,
   SPOTLIGHT,
-} from "../../constants/layout";
-import { NATIVE_DRIVER } from "../../constants/motion";
+} from "#features/wall/constants/layout";
+import { polaroidHeight } from "#features/wall/utils/polaroidGeometry";
+import { NATIVE_DRIVER } from "#platform/motion";
+import { CANVAS_HEIGHT, radius, size, space } from "#theme/tokens";
+import { themedStyles, useThemedStyles } from "#theme/wallTheme";
+
 import { PolaroidCard } from "../collage/PolaroidCard";
-import { TiltedSurface } from "../primitives/TiltedSurface";
+import { outsideCard, TiltedSurface } from "../primitives/TiltedSurface";
 
 const SWAP_MS = 400;
 const SWAP_SHIFT = 24;
 
 /** Offset and scale that put the spotlight card exactly over a wall card. */
 function zoomFrom(slot: SlotPosition) {
-  const wallHeight = POLAROID.width * POLAROID.aspect;
+  const wallHeight = polaroidHeight(slot.width);
   return {
-    dx: slot.x + POLAROID.width / 2 - (SPOTLIGHT.cardLeft + SPOTLIGHT.cardWidth / 2),
+    dx: slot.x + slot.width / 2 - (SPOTLIGHT.cardLeft + SPOTLIGHT.cardWidth / 2),
     dy: slot.y + wallHeight / 2 - CANVAS_HEIGHT / 2,
-    scale: POLAROID.width / SPOTLIGHT.cardWidth,
+    scale: slot.width / SPOTLIGHT.cardWidth,
   };
 }
 
@@ -83,6 +86,7 @@ const SpotlightCard = memo(function SpotlightCard({
   entering,
   exiting,
 }: SpotlightCardProps) {
+  const tint = useThemedStyles(themed);
   const presence = useRef(new Animated.Value(entering ? 0 : 1)).current;
 
   useEffect(() => {
@@ -105,7 +109,7 @@ const SpotlightCard = memo(function SpotlightCard({
     }).start();
   }, [exiting, presence]);
 
-  const { slot } = placed;
+  const { slot, drift } = placed;
   const style = useMemo(() => {
     const from = zoomFrom(slot);
     return {
@@ -123,7 +127,18 @@ const SpotlightCard = memo(function SpotlightCard({
             }),
           ),
         },
-        { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [from.dy, 0] }) },
+        {
+          translateY: Animated.add(
+            progress.interpolate({ inputRange: [0, 1], outputRange: [from.dy, 0] }),
+            // Leaves from (and lands back on) the slot's float, which fades out on the way.
+            drift
+              ? Animated.multiply(
+                  drift,
+                  progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+                )
+              : 0,
+          ),
+        },
         {
           rotate: progress.interpolate({
             inputRange: [0, 1],
@@ -133,14 +148,20 @@ const SpotlightCard = memo(function SpotlightCard({
         { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [from.scale, 1] }) },
       ],
     };
-  }, [presence, progress, slot]);
+  }, [drift, presence, progress, slot]);
 
   return (
     <TiltedSurface style={[styles.card, style]}>
+      {/* Depth without a blur pass: a soft accent halo, the accent ring, then the raised card. */}
+      <View style={[styles.halo, tint.halo]} />
+      <View style={[styles.ring, tint.ring]} />
       <PolaroidCard photo={placed.photo} width={SPOTLIGHT.cardWidth} raised />
     </TiltedSurface>
   );
 });
+
+const RING = outsideCard(CARD_REACH.ringOutset);
+const HALO = outsideCard(CARD_REACH.ringOutset + size.focusHalo);
 
 const styles = StyleSheet.create({
   card: {
@@ -148,4 +169,30 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 0,
   },
+  halo: {
+    borderRadius: radius.card,
+    borderWidth: size.focusHalo,
+    bottom: HALO,
+    left: HALO,
+    position: "absolute",
+    right: HALO,
+    top: HALO,
+  },
+  ring: {
+    borderRadius: space.sm,
+    borderWidth: size.focusRing,
+    bottom: RING,
+    left: RING,
+    position: "absolute",
+    right: RING,
+    top: RING,
+  },
 });
+
+/** The accent halo and ring around the spotlit card. */
+const themed = themedStyles((colors) =>
+  StyleSheet.create({
+    halo: { borderColor: colors.focusHalo },
+    ring: { borderColor: colors.brandPrimary },
+  }),
+);

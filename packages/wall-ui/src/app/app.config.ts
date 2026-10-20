@@ -1,6 +1,11 @@
-import { boothwallConfig } from "@boothwall/shared";
+import {
+  type BoothwallConfig,
+  boothwallConfig,
+  DEFAULT_WALL_ID,
+  type WallTarget,
+} from "@boothwall/shared";
 
-import { DEMO_PHOTO_COUNT } from "../features/wall/data/demoPhotos";
+import { LOCAL_API } from "../platform/config/localApi";
 
 export type AppConfig = {
   apiBaseUrl: string;
@@ -9,18 +14,30 @@ export type AppConfig = {
   /** Upper case so QR alphanumeric mode keeps the tiny badge code scannable. */
   sourceUrl: string;
   requestTimeoutMs: number;
-  simulation: { enabled: boolean; photos: number; newPhotoEveryMs: number };
+  simulation: { enabled: boolean; newPhotoEveryMs: number };
+  /** The TV build's one wall and optional display credential, from `tv` in boothwall.config.ts. */
+  wallTarget: WallTarget;
 };
 
-const { urls } = boothwallConfig;
+const { urls, tv } = boothwallConfig as BoothwallConfig;
+const webUrl = LOCAL_API?.webUrl ?? urls.web;
+
+/**
+ * A deployed web app redirects /gh to the repo, and the short upper-case URL keeps the QR coarse.
+ * A local one (http, e.g. `pnpm demo --lan`) can't, so the QR points at the repo itself.
+ */
+export const sourceUrlFor = ({ web, source }: Pick<BoothwallConfig["urls"], "web" | "source">) =>
+  web.startsWith("https://") ? `${web}/GH`.toUpperCase() : source;
 
 export const appConfig: AppConfig = {
-  apiBaseUrl: urls.api,
-  joinUrl: `${urls.web}/snap`,
-  // The web app redirects /gh to the repo; a short upper-case URL keeps the QR coarse.
-  sourceUrl: `${urls.web}/GH`.toUpperCase(),
+  apiBaseUrl: LOCAL_API?.apiBaseUrl ?? urls.api,
+  joinUrl: `${webUrl}/snap`,
+  sourceUrl: sourceUrlFor(urls),
   requestTimeoutMs: 8000,
   // Demo mode (boothwall.config.ts) runs the wall on the bundled demo photos, without the API.
-  // One photo per bundled image, so the first wall has no repeats.
-  simulation: { enabled: boothwallConfig.demo, photos: DEMO_PHOTO_COUNT, newPhotoEveryMs: 15_000 },
+  simulation: { enabled: boothwallConfig.demo, newPhotoEveryMs: 15_000 },
+  wallTarget: {
+    wallId: tv?.wallId ?? DEFAULT_WALL_ID,
+    ...(tv?.displayCredential && { screenToken: tv.displayCredential }),
+  },
 };

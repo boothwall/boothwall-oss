@@ -1,0 +1,93 @@
+schema-version = 1
+
+[package]
+title = "BoothWall Open"
+version = "1.0.0"
+build-number = 3
+id = "com.boothwall.app"
+icon = "@image/app_icon.png"
+
+[os.version]
+min = "1.2"
+target = "1.2"
+
+[needs]
+[[needs.module]]
+id = "/com.amazon.vega.os@IVega_1_2"
+
+[[needs.module]]
+id = "/com.amazon.kepler.keplerscript_4@IKeplerScript_0"
+
+# The three media modules below are for the W3C media player (features/keep-awake).
+# The build adds them on its own when @amazon-devices/react-native-w3cmedia is installed.
+[[needs.module]]
+id = "/com.amazon.kepler.kepler_media_controls_1@IKeplerMediaControls_0"
+
+[[needs.module]]
+id = "/com.amazon.kepler.keplermediadescriptor_1@IKeplermediadescriptor_1"
+
+[[needs.module]]
+id = "/com.amazon.kepler.w3cmedia_2@IW3cmedia_3"
+
+# Device storage (AsyncStorage): the last wall's photos and settings, for offline starts.
+[[needs.module]]
+id = "/com.amazon.kepler.async_storage__async_storage_2@IAsyncStorage__AsyncStorage_1"
+
+# w3cmedia's crypto module; the build adds it when it is missing.
+[[needs.module]]
+id = "/com.amazon.kepler.keplercrypto_2@IKeplercrypto_1"
+
+[components]
+[[components.interactive]]
+id = "com.boothwall.app.main"
+runtime-module = "/com.amazon.kepler.runtime.react_native_kepler_4@IReactNativeKepler_0"
+launch-type = "singleton"
+# The media category goes with the media-controls provider below (features/media-controls).
+categories = ["com.amazon.category.main", "com.amazon.category.kepler.media"]
+
+# Vega Media Controls: the remote's media keys and Alexa ("pause", "play", "next") reach the
+# keep-awake session, and the app maps them onto the wall (features/media-controls).
+[[extras]]
+key = "interface.provider"
+component-id = "com.boothwall.app.main"
+
+[extras.value.application]
+[[extras.value.application.interface]]
+interface_name = "com.amazon.kepler.media.IMediaPlaybackServer"
+command_options = ["Next", "Previous"]
+
+# Remote-control key events (D-pad, select, back). Input fails silently without this.
+[wants]
+[[wants.service]]
+id = "com.amazon.inputd.service"
+
+# Network reachability broadcasts (used by RN NetInfo/fetch); without these the OS
+# only grants access via a temporary exception list and logs access-control warnings.
+[[wants.service]]
+id = "com.amazon.network.service"
+
+[[wants.module]]
+id = "/com.amazon.kepler.net.net_manager@INetManager"
+
+# Media playback for the silent keep-awake audio (features/keep-awake). Vega only holds
+# off the screensaver while an app has an audio or video playback session.
+[[wants.service]]
+id = "com.amazon.mediametrics.service"
+
+[[wants.service]]
+id = "com.amazon.mediabuffer.service"
+
+[[wants.service]]
+id = "com.amazon.mediatransform.service"
+
+[[wants.service]]
+id = "com.amazon.audio.stream"
+
+[[wants.service]]
+id = "com.amazon.audio.control"
+
+[[wants.service]]
+id = "com.amazon.media.server"
+
+[[wants.service]]
+id = "com.amazon.media.playersession.service"

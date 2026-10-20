@@ -1,8 +1,8 @@
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 
-import { clientIp } from "@/core/http/client-ip";
 import type { AppEnv } from "@/core/http/http-context";
+import { clientIp } from "@/core/http/request-ip";
 import { createDb } from "@/db/client";
 import { adminGuardService } from "@/modules/auth/domain/admin-guard.service";
 import { adminRequired } from "@/modules/auth/domain/auth.errors";
@@ -17,6 +17,7 @@ export function isAdmin(c: Context<AppEnv>): Promise<boolean> {
   return adminGuardService.verify({
     db: createDb(c.env.DB),
     token: bearer(c),
+    fingerprintKey: c.get("config").CLIENT_FINGERPRINT_KEY,
     adminToken: c.get("config").ADMIN_TOKEN,
     clientIp: clientIp(c),
     now: new Date(),

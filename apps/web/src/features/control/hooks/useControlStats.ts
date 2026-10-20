@@ -1,41 +1,35 @@
+import { usePolling } from "@boothwall/event-ui/browser-hooks";
+import { EventApiError, useEventLease, useEventRuntime } from "@boothwall/event-ui/runtime";
 import type { PhotoStatsDTO } from "@boothwall/shared";
-import { useEffect, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
-import { STATS_REFRESH_MS } from "@/features/control/constants/timing";
-import { fetchStats } from "@/features/control/data/controlApi";
-import type { ControlSession } from "@/features/control/hooks/useControlSession";
+import { createStatsClient } from "../data";
 
-/** Local midnight: "today" is the booth's day, not UTC's. */
-const startOfToday = () => {
-  const now = new Date();
+/** Midnight where this browser is: the booth's "today". */
+function startOfToday(now = new Date()) {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-};
+}
 
-/** Overview numbers, polled while the Overview tab is open. */
-export function useControlStats({ passcode, fail }: ControlSession) {
+/**
+ * The stat tiles, every 5 s and after each decision. Informational: a failed read keeps the last
+ * numbers quietly; only a refused passcode reaches `onAccessError`, which locks the panel.
+ */
+export function useControlStats(onAccessError: (error: EventApiError) => boolean) {
+  const { transport } = useEventRuntime();
+  const client = useMemo(() => createStatsClient(transport), [transport]);
+  const capture = useEventLease();
+  const revision = useRef(0);
   const [stats, setStats] = useState<PhotoStatsDTO | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    if (!passcode) return;
-    let cancelled = false;
-    const load = () =>
-      fetchStats(startOfToday(), passcode)
-        .then((next) => {
-          if (cancelled) return;
-          setStats(next);
-          setFailed(false);
-        })
-        .catch((err: unknown) => {
-          if (!cancelled && !fail(err)) setFailed(true);
-        });
-    void load();
-    const timer = setInterval(() => void load(), STATS_REFRESH_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [fail, passcode]);
-
-  return { stats, failed };
+  const refresh = useCallback(async () => {
+    const current = ++revision.current;
+    const active = capture();
+    try {
+      const next = await client.fetchStats(startOfToday());
+      if (active() && current === revision.current) setStats(next);
+    } catch (error) {
+      if (active() && error instanceof EventApiError) onAccessError(error);
+    }
+  }, [capture, client, onAccessError]);
+  usePolling(refresh, 5000, true);
+  return { stats, refresh };
 }

@@ -1,9 +1,10 @@
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { color, fontSize, space } from "../../../../theme/tokens";
-import { wallCopy } from "../../constants/copy";
-import { RESTART_AFTER_MS } from "../../constants/timing";
+import { useWallCopy } from "#copy";
+import { RESTART_AFTER_MS } from "#features/wall/constants/timing";
+import { color, fontSize, space } from "#theme/tokens";
+import { themedStyles, useThemedStyles } from "#theme/wallTheme";
 
 type Props = { children: ReactNode };
 type State = { crashed: boolean; generation: number };
@@ -37,21 +38,28 @@ export class WallErrorBoundary extends Component<Props, State> {
   override render() {
     const { crashed, generation } = this.state;
     if (crashed) {
-      return (
-        <View style={styles.screen} testID="wall-restarting">
-          <Text style={styles.title}>{wallCopy.restarting.title}</Text>
-          <Text style={styles.body}>{wallCopy.restarting.body}</Text>
-        </View>
-      );
+      return <RestartingCard />;
     }
     return <React.Fragment key={generation}>{this.props.children}</React.Fragment>;
   }
 }
 
+/** The "restarting" card; a function component so it can read the theme. */
+function RestartingCard() {
+  const { wall: wallCopy } = useWallCopy();
+  // Mounted outside WallScreen, so always the universal theme.
+  const tint = useThemedStyles(themed);
+  return (
+    <View style={[styles.screen, tint.screen]} testID="wall-restarting">
+      <Text style={styles.title}>{wallCopy.restarting.title}</Text>
+      <Text style={styles.body}>{wallCopy.restarting.body}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     alignItems: "center",
-    backgroundColor: color.canvas,
     flex: 1,
     gap: space.sm,
     justifyContent: "center",
@@ -66,3 +74,10 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body,
   },
 });
+
+/** The theme's canvas behind the card. */
+const themed = themedStyles((colors) =>
+  StyleSheet.create({
+    screen: { backgroundColor: colors.canvas },
+  }),
+);

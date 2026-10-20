@@ -1,0 +1,16 @@
+{
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    // Override "react-native" types from the base: Vega re-exports RN via react-native-kepler.
+    "types": ["@amazon-devices/react-native-kepler", "jest"],
+    // Metro resolves package.json "imports" (shared uses #module); the RN base turns it off.
+    "resolvePackageJsonImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "react-native": ["./node_modules/react-native"],
+      "react-native/*": ["./node_modules/react-native/*"]
+    }
+  },
+  "include": ["src", "index.js"]
+}

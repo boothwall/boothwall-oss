@@ -1,23 +1,30 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, type TextStyle, View } from "react-native";
 
-import { color, fontSize } from "../../../../theme/tokens";
-import { NATIVE_DRIVER } from "../../constants/motion";
+import { NATIVE_DRIVER } from "#platform/motion";
+import { useReducedMotion } from "#platform/motion";
+import { fontSize } from "#theme/tokens";
+import { themedStyles, useThemedStyles } from "#theme/wallTheme";
 
 export type PopNumberProps = {
   value: number;
   style: TextStyle;
+  /** How far the number grows as it pops. */
+  peak?: number;
 };
 
-export const PopNumber = memo(function PopNumber({ value, style }: PopNumberProps) {
+export const PopNumber = memo(function PopNumber({ value, style, peak = 1.45 }: PopNumberProps) {
+  const tint = useThemedStyles(themed);
   const previous = useRef(value);
   const [delta, setDelta] = useState(0);
   const pop = useRef(new Animated.Value(0)).current;
+  // With reduced motion the number just changes.
+  const reduced = useReducedMotion();
 
   useEffect(() => {
     const diff = value - previous.current;
     previous.current = value;
-    if (diff <= 0) return;
+    if (diff <= 0 || reduced) return;
     setDelta(diff);
     pop.setValue(0);
     Animated.timing(pop, {
@@ -26,7 +33,7 @@ export const PopNumber = memo(function PopNumber({ value, style }: PopNumberProp
       easing: Easing.out(Easing.cubic),
       useNativeDriver: NATIVE_DRIVER,
     }).start();
-  }, [pop, value]);
+  }, [pop, reduced, value]);
 
   const animated = useMemo(
     () => ({
@@ -35,7 +42,7 @@ export const PopNumber = memo(function PopNumber({ value, style }: PopNumberProp
           {
             scale: pop.interpolate({
               inputRange: [0, 0.15, 0.45, 1],
-              outputRange: [1, 1.45, 1, 1],
+              outputRange: [1, peak, 1, 1],
             }),
           },
         ],
@@ -48,18 +55,20 @@ export const PopNumber = memo(function PopNumber({ value, style }: PopNumberProp
         transform: [{ translateY: pop.interpolate({ inputRange: [0, 1], outputRange: [0, -16] }) }],
       },
     }),
-    [pop],
+    [peak, pop],
   );
 
   return (
     <View style={styles.root}>
       {delta > 0 && (
-        <Animated.Text style={[styles.plus, animated.plus]}>{`+${delta}`}</Animated.Text>
+        <Animated.Text style={[styles.plus, tint.plus, animated.plus]}>{`+${delta}`}</Animated.Text>
       )}
       <Animated.View style={animated.number}>
         <Text style={style}>{value}</Text>
-        {/* Pink copy on top that fades in and out: a colour flash without animating colour. */}
-        <Animated.Text style={[style, styles.flash, animated.flash]}>{value}</Animated.Text>
+        {/* Accent copy on top that fades in and out: a colour flash without animating colour. */}
+        <Animated.Text style={[style, styles.flash, tint.flash, animated.flash]}>
+          {value}
+        </Animated.Text>
       </Animated.View>
     </View>
   );
@@ -70,7 +79,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   flash: {
-    color: color.brandPrimaryText,
     left: 0,
     position: "absolute",
     right: 0,
@@ -78,7 +86,6 @@ const styles = StyleSheet.create({
     top: 0,
   },
   plus: {
-    color: color.brandPrimaryText,
     fontSize: fontSize.caption,
     fontWeight: "900",
     position: "absolute",
@@ -87,3 +94,11 @@ const styles = StyleSheet.create({
     top: 0,
   },
 });
+
+/** The accent on the flash copy and the "+n" above it. */
+const themed = themedStyles((colors) =>
+  StyleSheet.create({
+    flash: { color: colors.brandPrimaryText },
+    plus: { color: colors.brandPrimaryText },
+  }),
+);

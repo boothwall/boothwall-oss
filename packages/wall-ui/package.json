@@ -2,10 +2,32 @@
   "name": "@boothwall/wall-ui",
   "version": "0.0.0",
   "private": true,
+  "sideEffects": false,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./tokens": "./src/tokens/index.ts",
+    "./demo": "./src/demo/index.ts"
+  },
+  "imports": {
+    "#app/config": "./src/app/app.config.ts",
+    "#theme/tokens": "./src/theme/tokens/index.ts",
+    "#theme/wallTheme": "./src/theme/wallTheme.ts",
+    "#platform/*": "./src/platform/*/index.ts",
+    "#assets/*": "./src/assets/*",
+    "#components/*": "./src/components/*/index.ts",
+    "#features/*": "./src/features/*/index.ts",
+    "#features/wall/*": "./src/features/wall/*.ts",
+    "#features/picks/*": "./src/features/picks/*.ts",
+    "#features/reactions/*": "./src/features/reactions/*.ts",
+    "#features/offline/*": "./src/features/offline/*.ts",
+    "#features/photo-call/*": "./src/features/photo-call/*.ts",
+    "#features/remote-hint/*": "./src/features/remote-hint/*.ts",
+    "#theme/themeArt": "./src/theme/themeArt.ts",
+    "#foundation/*": "./src/foundation/*/index.ts",
+    "#tokens": "./src/tokens/index.ts",
+    "#copy": "./src/copy/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
@@ -18,7 +40,7 @@
   },
   "peerDependencies": {
     "react": "19.2.0",
-    "react-native": "0.83.0"
+    "react-native": "0.83.0 || 0.83.10-1"
   },
   "devDependencies": {
     "@babel/plugin-transform-export-namespace-from": "^8.0.1",

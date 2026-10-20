@@ -1,10 +1,16 @@
-import { type WallEvent, wallEventSchema } from "@boothwall/shared";
+import {
+  DEFAULT_WALL_TARGET,
+  scopeToWall,
+  type WallEvent,
+  wallEventSchema,
+  type WallTarget,
+} from "@boothwall/shared";
 
 import { MAX_BACKOFF_MS } from "../constants/feed";
 
 /** The realtime socket every wall listens on, TV or browser. */
-export const wallSocketUrl = (apiBaseUrl: string) =>
-  `${apiBaseUrl.replace(/^http/, "ws")}/wall/live`;
+export const wallSocketUrl = (apiBaseUrl: string, target: WallTarget = DEFAULT_WALL_TARGET) =>
+  scopeToWall(`${apiBaseUrl.replace(/^http/, "ws")}/wall/live`, target);
 
 /** Exponential with jitter, so a room full of screens doesn't reconnect in lockstep after a blip. */
 export const reconnectDelayMs = (attempt: number) =>

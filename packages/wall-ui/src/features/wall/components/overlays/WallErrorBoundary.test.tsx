@@ -2,8 +2,9 @@ import React from "react";
 import { Text } from "react-native";
 import TestRenderer, { act, type ReactTestRenderer } from "react-test-renderer";
 
-import { wallCopy } from "../../constants/copy";
-import { RESTART_AFTER_MS } from "../../constants/timing";
+import { wallCopy } from "#features/wall/constants/copy";
+import { RESTART_AFTER_MS } from "#features/wall/constants/timing";
+
 import { WallErrorBoundary } from "./WallErrorBoundary";
 
 let broken = false;

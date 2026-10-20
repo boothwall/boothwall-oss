@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing } from "react-native";
 
+import { NATIVE_DRIVER } from "#platform/motion";
+
 import type { PlacedPhoto } from "../constants/layout";
-import { NATIVE_DRIVER } from "../constants/motion";
 
 const OPEN_MS = 420;
 const CLOSE_MS = 380;

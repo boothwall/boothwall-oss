@@ -1,21 +1,37 @@
-import { CATCH_ALL_TRIBE, type PhotoDTO, TRIBES } from "@boothwall/shared";
-import React, { memo, useEffect, useMemo, useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { type PhotoDTO, printedCategory } from "@boothwall/shared";
+import React, { memo, useMemo } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 
-import { color, size, space, tracking } from "../../../../theme/tokens";
-import { wallCopy } from "../../constants/copy";
-import { POLAROID, POLAROID_TYPE } from "../../constants/layout";
-import { IMAGE_RETRY_MS } from "../../constants/timing";
+import { useWallCopy } from "#copy";
+import { CAPTION_LOOKS } from "#features/wall/constants/captionStyles";
+import { POLAROID_TYPE } from "#features/wall/constants/layout";
+import { useWallSettings } from "#features/wall/hooks/useWallSettings";
+import { fitCaption } from "#features/wall/utils/fitCaption";
+import { photoSource } from "#features/wall/utils/photoSource";
+import { metaLineExtent, POLAROID_PAPER } from "#features/wall/utils/polaroidGeometry";
+import { usePixelDensity } from "#platform/display";
+import { color, size, space } from "#theme/tokens";
+
+import { PolaroidImage } from "./PolaroidImage";
+import { PolaroidMeta } from "./PolaroidMeta";
 
 export type PolaroidCardProps = {
   photo: PhotoDTO;
   width: number;
   onImageLoad?: () => void;
   /**
-   * A real blurred shadow, for the one or two cards lifted above the wall. Wall cards get a
-   * soft fake shadow instead: a dozen blurred shadows moving every frame is too much for a Stick.
+   * A card lifted above the wall (the selection, the spotlight): a real blurred shadow and the
+   * category and hashtag line. Wall cards get a soft fake shadow instead (a dozen blurred
+   * shadows moving every frame is too much for a Stick) and only their caption.
    */
   raised?: boolean;
+  /**
+   * Instead of `raised`, a card being lifted off the wall: 0 draws it exactly like a wall card,
+   * 1 like a raised one. The shadows crossfade and the category line fades in on a strip of
+   * paper hung below the card, so the card's own size never changes (a lifted copy that is
+   * taller than its original from the first frame jumps).
+   */
+  lift?: Animated.Value | Animated.AnimatedInterpolation<number>;
 };
 
 export const PolaroidCard = memo(function PolaroidCard({
@@ -23,113 +39,117 @@ export const PolaroidCard = memo(function PolaroidCard({
   width,
   onImageLoad,
   raised = false,
+  lift,
 }: PolaroidCardProps) {
-  // A fresh `{ uri }` object on every render can make the native image view reload and flash.
-  // Wall-size cards decode the small thumbnail; only the bigger spotlight card needs the original.
-  const uri = width > POLAROID.width ? photo.imageUrl : photo.thumbUrl;
-  const source = useMemo(() => ({ uri }), [uri]);
-  // A failed load (flaky booth Wi-Fi) remounts the Image a couple of times before giving up.
-  const [attempt, setAttempt] = useState(0);
-  const [errored, setErrored] = useState(false);
-  const retryIn = errored ? IMAGE_RETRY_MS[attempt] : undefined;
-  const failed = errored && retryIn === undefined;
-  useEffect(() => {
-    if (retryIn === undefined) return;
-    const timer = setTimeout(() => {
-      setErrored(false);
-      setAttempt((n) => n + 1);
-    }, retryIn);
-    return () => clearTimeout(timer);
-  }, [retryIn]);
-  const pad = width * 0.06;
+  const { wall: wallCopy } = useWallCopy();
+  const pad = width * POLAROID_PAPER.edge;
   const imageSize = width - pad * 2;
+  // The thumbnail while it is sharp enough where the wall is drawn, else the original.
+  const uri = photoSource(photo, imageSize, usePixelDensity());
   const unit = width / POLAROID_TYPE.baseWidth;
   const caption = photo.caption ?? wallCopy.noCaption;
-  // The big spotlight card has room for a second line instead of the smallest size.
-  const big = width > POLAROID.width;
-  const captionSize =
-    caption.length <= POLAROID_TYPE.short
-      ? POLAROID_TYPE.caption.large
-      : big || caption.length <= POLAROID_TYPE.medium
-        ? POLAROID_TYPE.caption.medium
-        : POLAROID_TYPE.caption.small;
-  // The catch-all category ("Just visiting") isn't worth printing on the card.
-  const showTribe = photo.tribe !== CATCH_ALL_TRIBE;
+  const { captionStyle, categories, eventHashtag } = useWallSettings();
+  const look = CAPTION_LOOKS[captionStyle];
+  // One line, shrunk to fit like a hand-written polaroid; two only for a caption too long.
+  const {
+    text: captionText,
+    lines,
+    size: captionSize,
+  } = fitCaption(caption, imageSize / unit, {
+    max: POLAROID_TYPE.caption.max * look.scale,
+    smallest: POLAROID_TYPE.caption.min * look.scale,
+    twoLineMax: POLAROID_TYPE.caption.twoLineMax * look.scale,
+    charWidth: look.charWidth / look.scale,
+  });
+  // Nothing for the catch-all ("Just visiting") or a category that was removed.
+  const category = printedCategory(categories, photo.tribe);
+  const metaLine = (
+    <PolaroidMeta category={category} hashtag={eventHashtag} unit={unit} fixedHeight={!!lift} />
+  );
+  const resting = useMemo(
+    () => lift?.interpolate({ inputRange: [0, 1], outputRange: [1, 0], extrapolate: "clamp" }),
+    [lift],
+  );
+  // The paper the category line adds: from just under the caption to the new foot.
+  const extent = metaLineExtent(width);
+  const foot = width * POLAROID_PAPER.foot;
 
   return (
     <View style={{ width }}>
-      {!raised && <View style={styles.plateOuter} />}
-      {!raised && <View style={styles.plateInner} />}
-      <View
-        style={[styles.card, raised && styles.raised, { padding: pad, paddingBottom: pad * 1.5 }]}
-      >
-        {failed ? (
-          <View style={[styles.placeholder, { width: imageSize, height: imageSize }]}>
-            <Text style={[styles.placeholderText, { fontSize: 14 * unit }]}>
-              {wallCopy.hashtag}
-            </Text>
-          </View>
-        ) : (
-          <Image
-            key={attempt}
-            source={source}
-            style={{ width: imageSize, height: imageSize, borderRadius: 2 }}
-            onLoad={onImageLoad}
-            onError={() => {
-              setErrored(true);
-              // Out of retries: reveal the card with its placeholder.
-              if (attempt >= IMAGE_RETRY_MS.length) onImageLoad?.();
-            }}
-          />
-        )}
+      {!raised && <Animated.View style={[styles.plateOuter, resting && { opacity: resting }]} />}
+      {!raised && <Animated.View style={[styles.plateInner, resting && { opacity: resting }]} />}
+      {lift && (
+        <Animated.View
+          style={[styles.liftShadow, styles.raised, { bottom: -extent, opacity: lift }]}
+        />
+      )}
+      <View style={[styles.card, raised && styles.raised, { padding: pad, paddingBottom: foot }]}>
+        <PolaroidImage
+          uri={uri}
+          size={imageSize}
+          unit={unit}
+          label={eventHashtag}
+          onLoad={onImageLoad}
+        />
         <Text
           style={[
             styles.caption,
             {
               fontSize: captionSize * unit,
-              lineHeight: POLAROID_TYPE.captionLine * unit,
-              marginTop: pad * 0.95,
+              // A two-line caption steps by its font's leading, so its lines read as one.
+              lineHeight:
+                lines === 1 ? POLAROID_TYPE.captionLine * unit : captionSize * unit * look.leading,
+              marginTop: width * POLAROID_PAPER.captionGap,
+              fontFamily: look.fontFamily,
+              fontWeight: look.fontWeight,
+              letterSpacing: (look.letterSpacing ?? 0) * unit,
+              textShadowOffset: { width: look.thicken * unit, height: 0 },
             },
           ]}
-          numberOfLines={big ? 2 : 1}
+          numberOfLines={lines}
         >
-          {caption}
+          {captionText}
         </Text>
-        {/* One Text, so the category and hashtag share a baseline whatever their case. */}
-        <Text
-          style={[
-            styles.meta,
-            {
-              fontSize: POLAROID_TYPE.meta * unit,
-              letterSpacing: POLAROID_TYPE.metaTracking * unit,
-              marginTop: POLAROID_TYPE.metaGap * unit,
-            },
-          ]}
-          numberOfLines={1}
-        >
-          {showTribe && <Text style={styles.tribe}>{TRIBES[photo.tribe].toUpperCase()}</Text>}
-          {showTribe && <Text style={styles.separator}>{"  ·  "}</Text>}
-          <Text style={styles.hashtag}>{wallCopy.hashtag}</Text>
-        </Text>
+        {/* Only on lifted cards, which are big enough to read: the selection's category and
+            the event hashtag under its caption. */}
+        {raised && metaLine}
       </View>
+      {lift && (
+        <Animated.View
+          style={[
+            styles.metaStrip,
+            { bottom: -extent, height: foot + extent, paddingHorizontal: pad, opacity: lift },
+          ]}
+        >
+          {metaLine}
+        </Animated.View>
+      )}
     </View>
   );
 });
 
 const styles = StyleSheet.create({
-  placeholder: {
-    alignItems: "center",
-    backgroundColor: color.brandSecondary,
-    borderRadius: 2,
-    justifyContent: "center",
-  },
-  placeholderText: {
-    color: color.textPrimary,
-    fontWeight: "800",
-  },
   card: {
     backgroundColor: color.paper,
     borderRadius: space.xs,
+  },
+  // Behind a lifting card, down to its category line: the raised shadow, faded in.
+  liftShadow: {
+    backgroundColor: color.paper,
+    borderRadius: space.xs,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  // Over the card's foot and below it: paper carrying the category line, faded in.
+  metaStrip: {
+    backgroundColor: color.paper,
+    borderBottomLeftRadius: space.xs,
+    borderBottomRightRadius: space.xs,
+    left: 0,
+    position: "absolute",
+    right: 0,
   },
   raised: {
     elevation: 8,
@@ -157,23 +177,11 @@ const styles = StyleSheet.create({
     right: -1,
     top: 1,
   },
+  // The font comes from the caption style. The shadow is the style's faux bold, if any.
   caption: {
     color: color.paperInk,
-    fontWeight: "500",
-    letterSpacing: tracking.caption,
+    textShadowColor: color.paperInk,
+    textShadowRadius: 0,
     textAlign: "center",
-  },
-  meta: {
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  tribe: {
-    color: color.brandSecondaryOnPaper,
-  },
-  separator: {
-    color: color.paperInkMuted,
-  },
-  hashtag: {
-    color: color.brandPrimaryOnPaper,
   },
 });

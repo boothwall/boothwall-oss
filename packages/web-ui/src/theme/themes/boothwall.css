@@ -1,0 +1,144 @@
+/*
+ * BoothWall theme ("Moments arriving"): the only file with literal values. Surface, text and
+ * status colours for the navy canvas, the type, radius and spacing scales, and fonts.
+ *
+ * The surfaces (--u-canvas, --u-surface, --u-surface-strong, --u-surface-solid and the page
+ * glow's --u-glow-warm / --u-glow-cool) come from the two surface themes in
+ * packages/shared/src/brand/surfaces: public (navy) by default, host (graphite) under
+ * [data-surface="host"]. The app inlines them (surfaceThemeCss) and supplies the brand colours (--u-paper, --u-primary,
+ * --u-primary-text, --u-primary-on-paper, --u-on-primary, --u-primary-glow, --u-secondary,
+ * --u-secondary-on-paper, --u-tertiary): apps/web injects them from vite/plugins/boothwall.ts,
+ * other apps from their own CSS. Contrast for every text pair is in brand/README.md.
+ */
+:root {
+  /* Lines on either surface theme */
+  --u-line: rgb(255 252 245 / 0.12);
+
+  /* Text on the canvas */
+  --u-ink: #fffcf5;
+  --u-ink-muted: #c3cad9;
+  --u-ink-subtle: #9aa3b8;
+  --u-ink-inverse: var(--u-canvas);
+
+  /* Status on the canvas; always paired with a word or an icon, never colour alone */
+  --u-success: #70c39b;
+  --u-waiting: #6685c9;
+  --u-info: #8fa9e5;
+  --u-danger: #ff7a70;
+
+  /* Text on paper and white: info and success each have a darker text colour (the app supplies
+     the primary's, --u-primary-on-paper, since it follows the configured brand colour) */
+  --u-paper-ink: #17243a;
+  --u-info-on-paper: #345394;
+  --u-success-on-paper: #246348;
+
+  /* The light band of a loading placeholder (Skeleton): barely there on the canvas. */
+  --u-shimmer-subtle: rgb(255 252 245 / 0.06);
+
+  /* Fonts: Outfit for everything, Kalam for handwritten photo captions */
+  --u-font-sans: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
+  --u-font-hand: "Kalam", "Segoe Print", "Bradley Hand", cursive;
+
+  /* Type scale, phone first (desktop values below) */
+  --u-text-display: 2rem;
+  --u-text-title: 1.375rem;
+  --u-text-body: 1.0625rem;
+  --u-text-ui: 0.9375rem;
+  --u-text-label: 0.8125rem;
+  --u-text-hand: 1.25rem;
+  --u-text-2xs: 0.625rem;
+
+  --u-leading-display: 1.08;
+  --u-leading-title: 1.2;
+  --u-leading-body: 1.5;
+  --u-leading-ui: 1.35;
+  --u-leading-hand: 1.2;
+
+  --u-tracking-caps: 0.12em;
+  --u-tracking-eyebrow: 0.18em;
+  --u-tracking-code: 0.5em;
+
+  /* Radius: containers 12, tiles 8, the polaroid card 4 (the logo's r4), pills for chips */
+  --u-radius-card: 12px;
+  --u-radius-control: 12px;
+  --u-radius-tile: 8px;
+  --u-radius-paper: 4px;
+  --u-radius-photo: 2px;
+  --u-radius-pill: 999px;
+
+  /*
+   * Page layout (the 4px step scale stays Tailwind's). One grid for every web page: the
+   * gutter is the page's left and right padding, the header has a fixed height with the logo
+   * centred in it, then a fixed gap before the first block. Steps up at 24rem (16 → 20),
+   * 40rem (32) and 64rem (40); see the media queries below.
+   */
+  --u-space-gutter: 1rem;
+  --u-space-header-gap: 1.5rem;
+  --u-space-block: 1.5rem;
+  --u-space-section: 3rem;
+  --u-header-height: 3.5rem;
+  /* The page column: the wide one for laptops, the narrow one for a phone-first page. */
+  --u-container-page: 76rem;
+  /* For a page built around a big picture, like the wall beside its sidebar on /try */
+  --u-container-wide: 92rem;
+  --u-container-narrow: 30rem;
+
+  /*
+   * The soft light at the top of a guest page: warm on the left, cool on the right, fading into
+   * the canvas behind the header. Its colours come from the surface theme (none on host pages).
+   */
+  --u-page-glow:
+    radial-gradient(38rem 24rem at 0% 0%, var(--u-glow-warm), transparent 70%),
+    radial-gradient(34rem 22rem at 100% 0%, var(--u-glow-cool), transparent 70%);
+
+  /*
+   * Polaroid geometry from the logo's front card: 7 units of paper at the top and sides and
+   * 31 at the bottom, on a 92-unit card. In container units of the card's own width.
+   */
+  --u-polaroid-edge: 7.6cqw;
+  --u-polaroid-chin: 33.7cqw;
+  /* Thin paper for small cards in a grid, where the brand's proportions read as a thick frame */
+  --u-polaroid-edge-thin: 3cqw;
+  --u-polaroid-chin-thin: 24cqw;
+  /*
+   * Text on thin paper grows with the card, so a caption reads in proportion on a wide grid;
+   * a phone's narrow card keeps the UI sizes as a floor.
+   */
+  --u-polaroid-caption-thin: max(var(--u-text-ui), 7.5cqw);
+  --u-polaroid-meta-thin: max(var(--u-text-label), 5.5cqw);
+
+  /* A TV's bezel, as a share of the TV's width */
+  --u-tv-bezel: 0.9cqw;
+
+  --u-shadow-glow: 0 20px 60px -20px var(--u-primary-glow);
+  --u-shadow-paper: 0 24px 50px -18px rgb(0 0 0 / 0.75);
+}
+
+/* A regular phone (from 384px): the 20px gutter; the smallest phones keep 16. */
+@media (min-width: 24rem) {
+  :root {
+    --u-space-gutter: 1.25rem;
+  }
+}
+
+/* Tablet (Tailwind's sm). */
+@media (min-width: 40rem) {
+  :root {
+    --u-space-gutter: 2rem;
+    --u-space-header-gap: 2rem;
+    --u-space-block: 2rem;
+  }
+}
+
+/* Desktop (Tailwind's lg): headings step up, body and UI text stay the same size. */
+@media (min-width: 64rem) {
+  :root {
+    --u-text-display: 3rem;
+    --u-text-title: 1.75rem;
+    --u-text-hand: 1.375rem;
+    --u-space-gutter: 2.5rem;
+    --u-space-header-gap: 2.5rem;
+    --u-space-section: 5rem;
+    --u-header-height: 4rem;
+  }
+}

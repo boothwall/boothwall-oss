@@ -1,1 +1,1 @@
-export { ControlPage } from "./pages/ControlPage";
+export { ControlPage } from "@/features/control/pages/ControlPage";

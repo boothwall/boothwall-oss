@@ -1,14 +1,17 @@
 import React, { memo, useEffect, useRef } from "react";
 import { Animated, Easing, StyleSheet, Text } from "react-native";
 
-import { color, fontSize, radius, space } from "../../../../theme/tokens";
-import { wallCopy } from "../../constants/copy";
-import { NATIVE_DRIVER } from "../../constants/motion";
+import { useWallCopy } from "#copy";
+import { NATIVE_DRIVER } from "#platform/motion";
+import { color, fontSize, layer, radius, space } from "#theme/tokens";
+import { themedStyles, useThemedStyles } from "#theme/wallTheme";
 
 export type ExitHintProps = { visible: boolean };
 
 /** "Press Back again to exit", centred so nobody misses it. */
 export const ExitHint = memo(function ExitHint({ visible }: ExitHintProps) {
+  const { wall: wallCopy } = useWallCopy();
+  const tint = useThemedStyles(themed);
   const show = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -26,10 +29,10 @@ export const ExitHint = memo(function ExitHint({ visible }: ExitHintProps) {
   };
 
   return (
-    <Animated.View style={[styles.wrap, style]} pointerEvents="none">
+    <Animated.View style={[styles.wrap, tint.wrap, style]} pointerEvents="none">
       <Text style={styles.text}>
         {wallCopy.exitHint.before}
-        <Text style={styles.key}>{wallCopy.exitHint.key}</Text>
+        <Text style={[styles.key, tint.key]}>{wallCopy.exitHint.key}</Text>
         {wallCopy.exitHint.after}
       </Text>
     </Animated.View>
@@ -39,15 +42,13 @@ export const ExitHint = memo(function ExitHint({ visible }: ExitHintProps) {
 const styles = StyleSheet.create({
   wrap: {
     alignSelf: "center",
-    backgroundColor: color.canvas,
-    borderColor: color.brandPrimary,
     borderRadius: radius.pill,
     borderWidth: 2,
     paddingHorizontal: space.lg,
     paddingVertical: space.sm + 2,
     position: "absolute",
     top: "45%",
-    zIndex: 110,
+    zIndex: layer.exitHint,
   },
   text: {
     color: color.textPrimary,
@@ -55,7 +56,14 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   key: {
-    color: color.brandPrimaryText,
     fontWeight: "900",
   },
 });
+
+/** The pill's canvas and accent edge, and the accent on the key's name. */
+const themed = themedStyles((colors) =>
+  StyleSheet.create({
+    wrap: { backgroundColor: colors.canvas, borderColor: colors.brandPrimary },
+    key: { color: colors.brandPrimaryText },
+  }),
+);

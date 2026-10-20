@@ -2,7 +2,7 @@ import qrcode from "qrcode-generator";
 import React, { memo, useMemo } from "react";
 import { View } from "react-native";
 
-import { color } from "../../../../theme/tokens";
+import { color } from "#theme/tokens";
 
 export type QrCodeProps = {
   value: string;

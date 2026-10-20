@@ -1,6 +1,5 @@
+import { boothwallConfig } from "@boothwall/shared/config/boothwall.config";
 import { defineConfig } from "cf/config";
-
-import { boothwallConfig } from "../../packages/shared/src/config/boothwall.config.ts";
 
 const { deploy } = boothwallConfig;
 

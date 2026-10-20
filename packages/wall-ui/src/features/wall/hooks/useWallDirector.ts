@@ -1,40 +1,55 @@
-import type { PhotoDTO, RemoteCommand } from "@boothwall/shared";
+import type { PhotoDTO } from "@boothwall/shared";
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 
-import {
-  AUTO_OPEN_EVERY_MS,
-  HURRY_MS,
-  PREFETCH_LEAD_MS,
-  ROTATE_EVERY_MS,
-  SELECT_DEBOUNCE_MS,
-  SELECT_EVERY_MS,
-} from "../constants/timing";
+import { HURRY_MS, OPEN_EVERY_STEPS, SELECT_DEBOUNCE_MS } from "../constants/timing";
 import { prefetchImage } from "../data/prefetchImage";
 import {
-  browseTarget,
+  atPageEnd,
   type DirectorEvent,
   filledSlotsOf,
   initialDirectorState,
+  opensNext,
   pinnedIds,
   wallDirector,
 } from "../state/wallDirector";
-import type { WallState } from "../state/wallState";
+import { nextPage, pageCount, pageOf } from "../state/wallPages";
+import { planStep } from "../state/wallStep";
+import type { RemoteCommands, WallDirectorOptions } from "./wall-director.types";
 
-export type RemoteCommands = Record<RemoteCommand, () => void>;
+export type { RemoteCommands } from "./wall-director.types";
 
-type Options = {
-  wall: WallState;
-  rotate: () => void;
-  show: (photoId: string) => void;
-  /** Tells the wall which photos must stay put (see `WallState.pinned`). */
-  pin: (ids: string[]) => void;
+const ignore = () => undefined;
+export const STILL_REMOTE: RemoteCommands = {
+  left: ignore,
+  right: ignore,
+  select: ignore,
+  back: ignore,
+  playpause: ignore,
 };
 
-/** Owns the wall's timers and feeds them into the `wallDirector` reducer. */
-export function useWallDirector({ wall, rotate, show, pin }: Options) {
-  const [state, dispatch] = useReducer(wallDirector, initialDirectorState);
+/**
+ * Owns the wall's timers and feeds them into the `wallDirector` reducer. The selection walks the
+ * cards in reading order, one at a time; after the last card the whole page turns to the next
+ * photos, so viewers always know where the wall goes next.
+ */
+export function useWallDirector({
+  wall,
+  turnPage,
+  pin,
+  selectEveryMs,
+  autoOpen,
+  held = false,
+  paused: hostPaused,
+}: WallDirectorOptions) {
+  const [state, dispatch] = useReducer(wallDirector, {
+    ...initialDirectorState,
+    paused: hostPaused ?? wall.settings.playbackPaused,
+  });
   const { selectedId, cycle, paused, spotlight, autoSpotlight, nextUp } = state;
   const hurry = nextUp !== null;
+  // With auto-open off the beat never comes round, but a guest's new photo still opens: seeing it
+  // land is the moment the wall is for.
+  const openEvery = autoOpen ? OPEN_EVERY_STEPS : Number.POSITIVE_INFINITY;
 
   // Timers and remote commands read the latest wall without restarting.
   const wallRef = useRef(wall);
@@ -44,7 +59,7 @@ export function useWallDirector({ wall, rotate, show, pin }: Options) {
 
   // The director's state as of the last event, not the last render: a second press (or a
   // timer) before React commits must carry on from the first one, and the wall must pin the
-  // new selection before a rotation or an arrival can land on it.
+  // new selection before a page turn or an arrival can land on it.
   const directorRef = useRef(state);
   const pinnedRef = useRef("");
   const send = useCallback(
@@ -59,6 +74,12 @@ export function useWallDirector({ wall, rotate, show, pin }: Options) {
     [pin],
   );
 
+  // Each authoritative snapshot wins over local playpause, even if its value is unchanged; a host
+  // that owns playback wins over the snapshot.
+  useEffect(() => {
+    send({ type: "setPaused", paused: hostPaused ?? wall.settings.playbackPaused });
+  }, [hostPaused, send, wall.settings]);
+
   const filledSlots = useMemo(() => filledSlotsOf(wall.slots), [wall.slots]);
   const photoById = useCallback(
     (id: string | null): PhotoDTO | null => wall.pool.find((photo) => photo.id === id) ?? null,
@@ -68,14 +89,30 @@ export function useWallDirector({ wall, rotate, show, pin }: Options) {
   const selectedPhoto = useMemo(() => photoById(selectedId), [photoById, selectedId]);
   const nextUpPhoto = useMemo(() => photoById(nextUp), [nextUp, photoById]);
 
+  const step = useCallback(
+    (direction: 1 | -1, auto: boolean) => {
+      const { page, event } = planStep(
+        wallRef.current,
+        directorRef.current,
+        direction,
+        auto,
+        openEvery,
+      );
+      if (page) {
+        turnPage(page);
+        // A second press before React renders must carry on from the new page.
+        wallRef.current = { ...wallRef.current, slots: page };
+      }
+      send(event);
+    },
+    [openEvery, send, turnPage],
+  );
+
   useEffect(() => {
-    if (paused) return;
-    const timer = setTimeout(
-      () => send({ type: "advance", slots: wallRef.current.slots }),
-      hurry ? HURRY_MS : SELECT_EVERY_MS,
-    );
+    if (paused || held) return;
+    const timer = setTimeout(() => step(1, true), hurry ? HURRY_MS : selectEveryMs);
     return () => clearTimeout(timer);
-  }, [cycle, hurry, paused, send]);
+  }, [cycle, held, hurry, paused, selectEveryMs, step]);
 
   // Where the selection was last seen, so a removed photo hands over to whatever replaced it.
   const lastSlot = useRef(0);
@@ -90,37 +127,25 @@ export function useWallDirector({ wall, rotate, show, pin }: Options) {
     }
   }, [hasPhotos, selectedSlot, send, wall.slots]);
 
-  useEffect(() => {
-    if (spotlight || paused || !hasPhotos) return;
-    // Warm the full-size image of whatever is selected just before it opens full screen.
-    const warm = setTimeout(() => {
-      const id = directorRef.current.selectedId;
-      prefetchImage(wallRef.current.pool.find((photo) => photo.id === id)?.imageUrl);
-    }, AUTO_OPEN_EVERY_MS - PREFETCH_LEAD_MS);
-    const timer = setTimeout(() => send({ type: "autoOpen" }), AUTO_OPEN_EVERY_MS);
-    return () => {
-      clearTimeout(warm);
-      clearTimeout(timer);
-    };
-  }, [hasPhotos, paused, send, spotlight]);
-
-  // The next photo opens full screen when an arrival is queued or the viewer's slideshow is
-  // running: fetch its full image during the current photo's turn.
+  // The next photo opens full screen when an arrival is queued, the next step is on the beat or
+  // the viewer's slideshow is running: fetch its full image during the current photo's turn.
+  const opensBig = opensNext(state, openEvery);
   const slideshow = spotlight && !autoSpotlight;
-  const upcomingSlot = filledSlots[(filledSlots.indexOf(selectedSlot) + 1) % filledSlots.length];
+  const upcomingSlots = atPageEnd(wall.slots, selectedId, 1) ? nextPage(wall, 1) : wall.slots;
+  const upcomingFilled = filledSlotsOf(upcomingSlots);
+  const upcomingSlot =
+    upcomingSlots === wall.slots
+      ? upcomingFilled[(upcomingFilled.indexOf(selectedSlot) + 1) % upcomingFilled.length]
+      : upcomingFilled[0];
   const upcomingId =
-    nextUp ?? (slideshow && upcomingSlot !== undefined ? (wall.slots[upcomingSlot] ?? null) : null);
+    nextUp ??
+    ((slideshow || opensBig) && upcomingSlot !== undefined
+      ? (upcomingSlots[upcomingSlot] ?? null)
+      : null);
   const upcomingUrl = photoById(upcomingId)?.imageUrl;
   useEffect(() => {
     prefetchImage(upcomingUrl);
   }, [upcomingUrl]);
-
-  // The wall spares pinned photos itself, so the ticks never need restarting.
-  useEffect(() => {
-    if (paused) return;
-    const timer = setInterval(rotate, ROTATE_EVERY_MS);
-    return () => clearInterval(timer);
-  }, [paused, rotate]);
 
   const newest = wall.fresh[wall.fresh.length - 1];
   useEffect(() => {
@@ -133,19 +158,6 @@ export function useWallDirector({ wall, rotate, show, pin }: Options) {
     hasSelectionRef.current = hasSelection;
   }, [hasSelection]);
 
-  // The remote walks every approved photo, newest first, not just the ones on screen: a
-  // waiting photo is swapped into a slot as you reach it (never the one you came from, which
-  // is still pinned when the wall picks the slot).
-  const browse = useCallback(
-    (direction: 1 | -1) => {
-      const target = browseTarget(wallRef.current.pool, directorRef.current.selectedId, direction);
-      if (target === null) return;
-      show(target);
-      send({ type: "select", photoId: target });
-    },
-    [send, show],
-  );
-
   const lastSelect = useRef(0);
   const commands = useMemo<RemoteCommands>(
     () => ({
@@ -156,12 +168,12 @@ export function useWallDirector({ wall, rotate, show, pin }: Options) {
         lastSelect.current = now;
         send({ type: "toggleSpotlight" });
       },
-      right: () => browse(1),
-      left: () => browse(-1),
+      right: () => step(1, false),
+      left: () => step(-1, false),
       back: () => send({ type: "closeSpotlight" }),
       playpause: () => send({ type: "togglePause" }),
     }),
-    [browse, send],
+    [send, step],
   );
 
   const poolIndex = wall.pool.findIndex((photo) => photo.id === selectedId);
@@ -174,9 +186,14 @@ export function useWallDirector({ wall, rotate, show, pin }: Options) {
     /** Place of the selected photo among all approved ones (newest is 1). */
     position: poolIndex + 1,
     total: wall.pool.length,
+    /** Which set of photos is on screen, counted from the newest. */
+    page: pageOf(wall) + 1,
+    pages: pageCount(wall),
     spotlight,
     paused,
-    durationMs: hurry ? HURRY_MS : SELECT_EVERY_MS,
+    durationMs: hurry ? HURRY_MS : selectEveryMs,
+    /** The timer's next step opens its photo full screen (the footer shows it coming). */
+    opensNext: opensBig && !slideshow,
     cycleKey: `${cycle}-${selectedId}`,
     commands,
   };

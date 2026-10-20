@@ -1,26 +1,30 @@
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 
-import { appConfig } from "../../../../app/app.config";
-import { color, fontSize, radius, space } from "../../../../theme/tokens";
-import { wallCopy } from "../../constants/copy";
-import { CONNECTING_CARD_WIDTH } from "../../constants/layout";
-import { NATIVE_DRIVER } from "../../constants/motion";
-import { CONNECTION_FADE_MS, SPINNER_TURN_MS } from "../../constants/timing";
-import type { ConnectionPhase } from "../../state/connectionPhase";
+import { useWallCopy } from "#copy";
+import { CONNECTING_CARD_WIDTH } from "#features/wall/constants/layout";
+import { CONNECTION_FADE_MS, SPINNER_TURN_MS } from "#features/wall/constants/timing";
+import type { ConnectionPhase } from "#features/wall/state/connectionPhase";
+import { useWallConnection } from "#platform/connection";
+import { NATIVE_DRIVER } from "#platform/motion";
+import { useLoop } from "#platform/motion";
+import { color, fontSize, layer, radius, space } from "#theme/tokens";
+import { themedStyles, useThemedStyles, useWallTheme } from "#theme/wallTheme";
 
 export type ConnectingOverlayProps = {
   phase: ConnectionPhase;
   attempts: number;
 };
 
-const host = appConfig.apiBaseUrl.replace(/^https?:\/\//, "");
-
 /** Covers the empty wall until the first snapshot lands, so a slow start never reads as "no photos". */
 export const ConnectingOverlay = memo(function ConnectingOverlay({
   phase,
   attempts,
 }: ConnectingOverlayProps) {
+  const { wall: wallCopy } = useWallCopy();
+  const host = useWallConnection().apiBaseUrl.replace(/^https?:\/\//, "");
+  const { colors } = useWallTheme();
+  const tint = useThemedStyles(themed);
   const visible = phase !== "ready";
   const [mounted, setMounted] = useState(visible);
   const show = useRef(new Animated.Value(visible ? 1 : 0)).current;
@@ -39,9 +43,9 @@ export const ConnectingOverlay = memo(function ConnectingOverlay({
 
   const failed = phase === "failed";
   return (
-    <Animated.View style={[styles.overlay, { opacity: show }]} pointerEvents="none">
-      <View style={styles.card} accessibilityLiveRegion="polite">
-        <Spinner tone={failed ? color.warning : color.brandPrimary} />
+    <Animated.View style={[styles.overlay, tint.overlay, { opacity: show }]} pointerEvents="none">
+      <View style={[styles.card, tint.card]} accessibilityLiveRegion="polite">
+        <Spinner tone={failed ? color.warning : colors.brandPrimary} />
         <Text style={styles.title}>
           {failed
             ? wallCopy.connection.failedTitle
@@ -62,7 +66,9 @@ export const ConnectingOverlay = memo(function ConnectingOverlay({
 
 function Spinner({ tone }: { tone: string }) {
   const turn = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
+  // The halo breathes; with reduced motion it holds still and only the arc turns (the arc is
+  // the "still working" signal, so it keeps going, at a steady linear pace).
+  const pulse = useLoop(SPINNER_TURN_MS, { rest: 0.5 });
 
   useEffect(() => {
     const spin = Animated.loop(
@@ -73,20 +79,9 @@ function Spinner({ tone }: { tone: string }) {
         useNativeDriver: NATIVE_DRIVER,
       }),
     );
-    const ease = { easing: Easing.inOut(Easing.sin), useNativeDriver: NATIVE_DRIVER };
-    const breathe = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: SPINNER_TURN_MS, ...ease }),
-        Animated.timing(pulse, { toValue: 0, duration: SPINNER_TURN_MS, ...ease }),
-      ]),
-    );
     spin.start();
-    breathe.start();
-    return () => {
-      spin.stop();
-      breathe.stop();
-    };
-  }, [turn, pulse]);
+    return () => spin.stop();
+  }, [turn]);
 
   const arcStyle = useMemo(
     () => ({
@@ -121,15 +116,13 @@ const RING = 3;
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
-    backgroundColor: color.spotlightScrim,
     justifyContent: "center",
-    zIndex: 100,
+    zIndex: layer.connecting,
   },
   card: {
     alignItems: "center",
-    backgroundColor: color.canvas,
     borderColor: color.border,
     borderRadius: radius.card,
     borderWidth: 1,
@@ -146,17 +139,17 @@ const styles = StyleSheet.create({
     width: SPINNER,
   },
   halo: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderRadius: radius.pill,
   },
   track: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderColor: color.border,
     borderRadius: radius.pill,
     borderWidth: RING,
   },
   arc: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderBottomColor: color.transparent,
     borderLeftColor: color.transparent,
     borderRadius: radius.pill,
@@ -184,3 +177,11 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+/** The theme's scrim over the wall and its canvas behind the card. */
+const themed = themedStyles((colors) =>
+  StyleSheet.create({
+    overlay: { backgroundColor: colors.spotlightScrim },
+    card: { backgroundColor: colors.canvas },
+  }),
+);

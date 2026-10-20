@@ -1,0 +1,13 @@
+/*
+ * The one stylesheet a consumer imports, after `@import "tailwindcss"`. The app still has to
+ * define the brand variables listed in themes/boothwall.css.
+ */
+@import "@fontsource-variable/outfit";
+@import "@fontsource/kalam/400.css";
+@import "./themes/boothwall.css";
+@import "./theme.css";
+@import "./base.css";
+@import "./animations.css";
+
+/* Tailwind only scans the app by default; this makes it generate the package's classes too. */
+@source "../";

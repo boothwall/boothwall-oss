@@ -1,8 +1,13 @@
+export { SignalCallBurst } from "./components/overlays/SignalCallBurst";
 export { WallErrorBoundary } from "./components/overlays/WallErrorBoundary";
+export { QrCode, type QrCodeProps } from "./components/primitives/QrCode";
+export { CAPTION_LOOKS } from "./constants/captionStyles";
+export { JOIN_VOICE } from "./constants/copy";
 export { PING_MS } from "./constants/feed";
-export { CANVAS_HEIGHT, CANVAS_WIDTH } from "./constants/layout";
-export { DEMO_PHOTO_COUNT } from "./data/demoPhotos";
+export { DEMO_PHOTO_COUNT, type DemoPhoto, demoPhotos } from "./data/demoPhotos";
 export { simulatedSnapshot } from "./data/simulatedFeed";
 export { parseWallEvent, reconnectDelayMs, wallSocketUrl } from "./data/wallSocket";
-export type { RemoteHandlers, RemoteInputHook } from "./hooks/useWallRemote";
+export { useWallSettings } from "./hooks/useWallSettings";
 export { WallScreen, type WallScreenProps } from "./screens/WallScreen";
+export type { FeedStatus } from "./state/connectionPhase";
+export type { WallDisplayObserver, WallDisplaySource } from "./types";

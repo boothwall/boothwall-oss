@@ -1,1 +1,1 @@
-export { CapturePage } from "./pages/CapturePage";
+export * from "./pages";

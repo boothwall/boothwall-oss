@@ -6,11 +6,15 @@
     "node": ">=24 <25"
   },
   "scripts": {
+    "demo": "node scripts/boothwall/index.mjs demo",
+    "try": "node scripts/boothwall/index.mjs demo --tv",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "lint:scripts": "eslint scripts",
+    "test:scripts": "node --test 'scripts/**/*.test.mjs'",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "api:dev": "pnpm --filter @boothwall/api dev",

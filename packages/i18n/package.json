@@ -1,0 +1,56 @@
+{
+  "name": "@boothwall/i18n",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "bin": {
+    "boothwall-messages": "./scripts/messages/cli.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./web": "./src/web/index.ts",
+    "./react": "./src/react/index.ts",
+    "./native": "./src/native/index.ts",
+    "./messages/*": "./src/messages/*.ts",
+    "./compiler": "./scripts/messages/index.ts"
+  },
+  "imports": {
+    "#catalogue": "./src/catalogue/index.ts",
+    "#format": "./src/format/index.ts",
+    "#languages": "./src/languages/index.ts",
+    "#negotiate": "./src/negotiate/index.ts",
+    "#plural": "./src/plural/index.ts",
+    "#ports": "./src/ports/index.ts",
+    "#time-zone": "./src/time-zone/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint src scripts",
+    "test": "vitest run",
+    "messages": "node scripts/messages/cli.ts messages src/messages --runtime \"#catalogue\""
+  },
+  "dependencies": {
+    "@lingui/core": "6.10.0",
+    "@lingui/message-utils": "6.10.0",
+    "@lingui/react": "6.10.0"
+  },
+  "peerDependencies": {
+    "react": "19.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@boothwall/tsconfig": "workspace:*",
+    "@types/node": "^24.19.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "vitest": "^5.0.3"
+  }
+}

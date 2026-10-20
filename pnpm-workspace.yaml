@@ -1,3 +1,16 @@
 packages:
-  - apps/*
-  - packages/*
+  - apps/api
+  - apps/tv-vega
+  - apps/web
+  - brand
+  - packages/event-ui
+  - packages/i18n
+  - packages/shared
+  - packages/tsconfig
+  - packages/wall-ui
+  - packages/web-ui
+autoInstallPeers: true
+excludeLinksFromLockfile: false
+overrides:
+  "@cloudflare/workerd-darwin-arm64": 1.20261001.1
+  workerd: 1.20261001.1

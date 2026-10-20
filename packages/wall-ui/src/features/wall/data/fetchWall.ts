@@ -1,13 +1,28 @@
-import { type WallSnapshotDTO, wallSnapshotSchema } from "@boothwall/shared";
+import {
+  scopeToWall,
+  type WallSnapshotDTO,
+  wallSnapshotSchema,
+  type WallTarget,
+} from "@boothwall/shared";
 
-import { appConfig } from "../../../app/app.config";
+import { appConfig } from "#app/config";
+
 import { POOL_LIMIT } from "../constants/feed";
+
+export class ScreenAccessError extends Error {
+  constructor(readonly status: number) {
+    super("Display access revoked");
+  }
+}
 
 /**
  * Rejects on a timeout, any non-2xx status (5xx included), unreadable JSON or a body that
  * doesn't match the contract; the caller retries with backoff.
  */
-export async function fetchWall(): Promise<WallSnapshotDTO> {
+export async function fetchWall(
+  target: WallTarget,
+  apiBaseUrl = appConfig.apiBaseUrl,
+): Promise<WallSnapshotDTO> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   // The race is a backstop in case the platform fetch ignores the abort signal.
@@ -18,9 +33,9 @@ export async function fetchWall(): Promise<WallSnapshotDTO> {
     }, appConfig.requestTimeoutMs);
   });
   const request = (async () => {
-    const res = await fetch(`${appConfig.apiBaseUrl}/photos?limit=${POOL_LIMIT}`, {
-      signal: controller.signal,
-    });
+    const url = scopeToWall(`${apiBaseUrl}/photos?limit=${POOL_LIMIT}`, target);
+    const res = await fetch(url, { signal: controller.signal });
+    if ([401, 403, 404, 410].includes(res.status)) throw new ScreenAccessError(res.status);
     if (!res.ok) throw new Error(`GET /photos failed with ${res.status}`);
     return wallSnapshotSchema.parse(await res.json());
   })();

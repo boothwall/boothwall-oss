@@ -1,0 +1,10 @@
+{
+  "name": "@boothwall/brand",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The brand's logos and their sources, for every app to import by name.",
+  "exports": {
+    "./logos/*": "./logos/*",
+    "./sources/*": "./sources/*"
+  }
+}

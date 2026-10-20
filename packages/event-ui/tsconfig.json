@@ -1,0 +1,10 @@
+{
+  "extends": "@boothwall/tsconfig/base.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    "moduleSuffixes": [".web", ""]
+  },
+  "include": ["src"]
+}

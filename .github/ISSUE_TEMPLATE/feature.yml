@@ -1,0 +1,22 @@
+name: Feature idea
+description: Suggest something that would help at your event.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you're trying to do
+      description: The event moment or task this is about, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How you picture it working, for guests, the host or the screen.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Anything you've tried instead

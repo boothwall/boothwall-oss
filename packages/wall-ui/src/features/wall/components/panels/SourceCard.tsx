@@ -1,80 +1,122 @@
+import { boothwallConfig } from "@boothwall/shared";
 import React, { memo } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View, type ViewStyle } from "react-native";
 
-import { appConfig } from "../../../../app/app.config";
-import githubMark from "../../../../assets/icons/github-mark.png";
-import { color, fontSize, radius, space } from "../../../../theme/tokens";
-import { wallCopy } from "../../constants/copy";
-import { SOURCE_CARD } from "../../constants/layout";
-import { imageSource } from "../../utils/bundledImage";
+import githubMark from "#assets/icons/github-mark.png";
+import { useWallCopy } from "#copy";
+import { useWallLook } from "#features/wall/hooks/useWallLook";
+import { imageSource } from "#platform/assets";
+import { useWallConnection, useWallPresentation } from "#platform/connection";
+import { color, fontSize, fontWeight, radius, size, space } from "#theme/tokens";
+import { themedStyles, useThemedStyles } from "#theme/wallTheme";
+
 import { QrCode } from "../primitives/QrCode";
+import { RepoSourceCard } from "./RepoSourceCard";
 
 const GITHUB_MARK = imageSource(githubMark);
-const QR_SIZE = SOURCE_CARD.height - space.sm * 2 - 6;
 
-/** Memoised: its QR is a few hundred views that never change, so wall ticks skip it. */
-export const SourceCard = memo(function SourceCard() {
-  const { handle, scan } = wallCopy.author;
+export type SourceCardProps = {
+  /** Where it sits: in the panel's flow, or laid over Who's here while it takes its turn. */
+  style?: ViewStyle;
+};
 
+/**
+ * The source card: the classic credit, or the repo card when `wall.source` names the repo.
+ * Memoised: its QR is a few hundred views that never change, so wall ticks skip it.
+ */
+export const SourceCard = memo(function SourceCard({ style }: SourceCardProps) {
+  const { source } = useWallLook();
+  return source ? <RepoSourceCard source={source} style={style} /> : <CreditCard style={style} />;
+});
+
+/**
+ * The open-source credit: what it is, what you get (this wall, free, at your own event) and a QR
+ * to the code, in one compact row at the foot of the panel.
+ */
+function CreditCard({ style }: SourceCardProps) {
+  const { wall: wallCopy } = useWallCopy();
+  const defaults = useWallConnection();
+  const { sourceUrl = defaults.sourceUrl, sourceLabel = defaults.sourceLabel } =
+    useWallPresentation();
+  const custom =
+    sourceUrl !== boothwallConfig.urls.source || sourceLabel !== boothwallConfig.author.handle;
+  const { title, body } = wallCopy.author;
+  const tint = useThemedStyles(themed);
   return (
-    <View style={styles.card} accessible accessibilityLabel={`Source on GitHub by ${handle}`}>
+    <View
+      style={[styles.card, tint.card, style]}
+      accessible
+      accessibilityLabel={sourceLabel}
+      testID="wall-source"
+    >
       <View style={styles.qrFrame}>
-        <QrCode value={appConfig.sourceUrl} size={QR_SIZE} errorCorrection="L" />
+        <QrCode value={sourceUrl} size={size.sourceQr} errorCorrection="L" />
       </View>
       <View style={styles.text}>
-        <View style={styles.handleRow}>
-          <Image source={GITHUB_MARK} style={styles.mark} accessible={false} />
-          <Text style={styles.handle}>{handle}</Text>
+        <View style={styles.head}>
+          {custom ? (
+            <Text style={styles.title} accessible={false}>
+              ↗
+            </Text>
+          ) : (
+            <Image source={GITHUB_MARK} style={styles.mark} accessible={false} />
+          )}
+          <Text style={styles.title} numberOfLines={1}>
+            {custom ? sourceLabel : title}
+          </Text>
         </View>
-        <Text style={styles.scan}>{scan}</Text>
+        <Text style={styles.body} numberOfLines={2}>
+          {custom ? sourceUrl.replace(/^https?:\/\//, "") : body}
+        </Text>
       </View>
     </View>
   );
-});
+}
 
 const styles = StyleSheet.create({
   card: {
-    alignItems: "center",
-    // It sits on the backdrop's horizon glow, where the glassy surface washes the text out.
-    backgroundColor: color.surfaceSolid,
     borderColor: color.border,
     borderRadius: radius.card,
     borderWidth: 1,
+    alignItems: "center",
     flexDirection: "row",
     gap: space.sm + 2,
-    height: SOURCE_CARD.height,
-    left: SOURCE_CARD.left,
-    paddingHorizontal: space.sm,
-    position: "absolute",
-    top: SOURCE_CARD.top,
-    width: SOURCE_CARD.width,
-    zIndex: 45,
+    paddingHorizontal: space.sm + 2,
+    paddingVertical: space.sm,
+  },
+  head: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: space.sm,
+  },
+  mark: {
+    height: size.sourceMark,
+    width: size.sourceMark,
+  },
+  title: {
+    color: color.textPrimary,
+    flexShrink: 1,
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.heavy,
+  },
+  body: {
+    color: color.textSecondary,
+    fontSize: fontSize.caption,
   },
   qrFrame: {
     backgroundColor: color.paper,
-    borderRadius: space.xs + 2,
-    padding: 3,
+    borderRadius: space.sm,
+    padding: space.xs,
   },
   text: {
     flex: 1,
-    gap: 2,
-  },
-  handleRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: space.xs + 2,
-  },
-  mark: {
-    height: 15,
-    width: 15,
-  },
-  handle: {
-    color: color.textPrimary,
-    fontSize: fontSize.body - 1,
-    fontWeight: "800",
-  },
-  scan: {
-    color: color.textSecondary,
-    fontSize: fontSize.caption - 1,
+    gap: 1,
   },
 });
+
+/** The card in the theme's tone. */
+const themed = themedStyles((colors) =>
+  StyleSheet.create({
+    card: { backgroundColor: colors.surfaceSolid },
+  }),
+);

@@ -1,19 +1,28 @@
-import { CATCH_ALL_TRIBE, TRIBES } from "@boothwall/shared";
-import React, { memo, useMemo } from "react";
+import { printedCategory } from "@boothwall/shared";
+import React, { memo, type ReactNode, useMemo } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 
-import { color, fontSize, radius, space, tracking } from "../../../../theme/tokens";
-import { wallCopy } from "../../constants/copy";
-import { type PlacedPhoto, POLAROID, SPOTLIGHT } from "../../constants/layout";
-import { useSpotlightTransition } from "../../hooks/useSpotlightTransition";
-import { formatRelative } from "../../utils/formatRelative";
+import { useWallCopy } from "#copy";
+import { type PlacedPhoto, POLAROID, SPOTLIGHT } from "#features/wall/constants/layout";
+import { useSpotlightTransition } from "#features/wall/hooks/useSpotlightTransition";
+import { useWallSettings } from "#features/wall/hooks/useWallSettings";
+import { fitFontSize } from "#features/wall/utils/fitFontSize";
+import { formatRelative } from "#features/wall/utils/formatRelative";
+import { color, fontSize, layer, radius, space, tracking } from "#theme/tokens";
+import { themedStyles, useThemedStyles } from "#theme/wallTheme";
+
 import { ProgressLine } from "../primitives/ProgressLine";
 import { SpotlightCards } from "./SpotlightCards";
 
 export type SpotlightProps = {
   /** The photo to show full screen and the wall slot it zooms out of; null closes it. */
   selection: PlacedPhoto | null;
-  position: number;
+  /** Shown above the caption, like a pick's "Crowd favourite" label. */
+  badge?: ReactNode;
+  /** Over the countdown; "Next photo" unless said otherwise. */
+  nextLabel?: string;
+  /** Its place among the wall's photos; null hides it (a pick isn't part of the slideshow). */
+  position: number | null;
   total: number;
   durationMs: number;
   cycleKey: string;
@@ -24,13 +33,18 @@ const DETAILS_SHIFT = 16;
 
 export const Spotlight = memo(function Spotlight({
   selection,
+  badge,
+  nextLabel,
   position,
   total,
   durationMs,
   cycleKey,
   paused,
 }: SpotlightProps) {
+  const { wall: wallCopy } = useWallCopy();
   const { progress, shown } = useSpotlightTransition(selection);
+  const { categories, eventHashtag } = useWallSettings();
+  const tint = useThemedStyles(themed);
 
   const animated = useMemo(
     () => ({
@@ -52,28 +66,37 @@ export const Spotlight = memo(function Spotlight({
 
   if (!shown) return null;
   const { photo } = shown;
+  const caption = photo.caption ?? wallCopy.noCaption;
+  const category = printedCategory(categories, photo.tribe);
+  const captionSize = fitFontSize(caption, SPOTLIGHT.detailsWidth, CAPTION_FIT);
 
   return (
-    <View style={styles.root} pointerEvents="none">
-      <Animated.View style={[styles.backdrop, animated.backdrop]} />
+    <View style={styles.root} pointerEvents="none" testID="wall-spotlight">
+      <Animated.View style={[styles.backdrop, tint.backdrop, animated.backdrop]} />
       <View style={styles.cardBox}>
         <SpotlightCards current={shown} progress={progress} />
       </View>
-      <Animated.View style={[styles.details, animated.details]}>
-        <Text style={styles.hashtag}>{wallCopy.hashtag}</Text>
-        <Text style={styles.caption} numberOfLines={3}>
-          {photo.caption ?? wallCopy.noCaption}
+      <Animated.View style={[styles.details, tint.details, animated.details]}>
+        {/* A pick's badge takes the hashtag's place: one label above the caption is enough. */}
+        {badge ?? <Text style={[styles.hashtag, tint.hashtag]}>{eventHashtag}</Text>}
+        <Text
+          style={[styles.caption, { fontSize: captionSize, lineHeight: captionSize * 1.15 }]}
+          numberOfLines={2}
+        >
+          {caption}
         </Text>
         <View style={styles.chips}>
-          {photo.tribe !== CATCH_ALL_TRIBE && (
-            <Text style={styles.chip}>{TRIBES[photo.tribe]}</Text>
-          )}
+          {category && <Text style={[styles.chip, tint.chip]}>{category}</Text>}
           <Text style={styles.time}>{formatRelative(photo.createdAt)}</Text>
         </View>
         <View style={styles.next}>
           <View style={styles.nextRow}>
-            <Text style={styles.nextLabel}>{paused ? wallCopy.paused : wallCopy.nextPhoto}</Text>
-            <Text style={styles.position}>{wallCopy.position(position, total)}</Text>
+            <Text style={styles.nextLabel}>
+              {paused ? wallCopy.paused : (nextLabel ?? wallCopy.nextPhoto)}
+            </Text>
+            {position !== null && (
+              <Text style={styles.position}>{wallCopy.position(position, total)}</Text>
+            )}
           </View>
           <ProgressLine
             width={SPOTLIGHT.detailsWidth}
@@ -87,20 +110,20 @@ export const Spotlight = memo(function Spotlight({
   );
 });
 
-const CAPTION_SIZE = fontSize.title - 16;
+// Shrinks long captions so most stay on one line instead of leaving one word on the next.
+const CAPTION_FIT = { max: fontSize.title - 16, min: fontSize.heading, charWidth: 0.55 };
 
 const styles = StyleSheet.create({
   root: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     flexDirection: "row",
     gap: SPOTLIGHT.gap,
     justifyContent: "center",
-    zIndex: 60,
+    zIndex: layer.spotlight,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: color.spotlightScrim,
+    ...StyleSheet.absoluteFill,
   },
   cardBox: {
     height: SPOTLIGHT.cardWidth * POLAROID.aspect,
@@ -108,7 +131,6 @@ const styles = StyleSheet.create({
   },
   // Padding sits outside the column (negative margin), so the layout maths stay the same.
   details: {
-    backgroundColor: color.spotlightPanel,
     borderColor: color.border,
     borderRadius: radius.card,
     borderWidth: 1,
@@ -118,16 +140,13 @@ const styles = StyleSheet.create({
     width: SPOTLIGHT.detailsWidth + space.lg * 2,
   },
   hashtag: {
-    color: color.brandPrimaryText,
     fontSize: fontSize.heading,
     fontWeight: "800",
   },
   caption: {
     color: color.textPrimary,
-    fontSize: CAPTION_SIZE,
     fontWeight: "800",
     letterSpacing: tracking.heading,
-    lineHeight: CAPTION_SIZE * 1.15,
   },
   chips: {
     alignItems: "center",
@@ -135,9 +154,7 @@ const styles = StyleSheet.create({
     gap: space.md,
   },
   chip: {
-    backgroundColor: color.brandSecondary,
     borderRadius: radius.pill,
-    color: color.onBrandSecondary,
     fontSize: fontSize.caption + 1,
     fontWeight: "800",
     overflow: "hidden",
@@ -158,7 +175,7 @@ const styles = StyleSheet.create({
   },
   nextLabel: {
     color: color.textMuted,
-    fontSize: fontSize.caption - 1,
+    fontSize: fontSize.caption,
     fontWeight: "800",
     letterSpacing: tracking.label,
     textTransform: "uppercase",
@@ -170,3 +187,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 });
+
+/** The theme's scrim and details panel, the accent hashtag and the category chip. */
+const themed = themedStyles((colors) =>
+  StyleSheet.create({
+    backdrop: { backgroundColor: colors.spotlightScrim },
+    details: { backgroundColor: colors.spotlightPanel },
+    hashtag: { color: colors.brandPrimaryText },
+    chip: { backgroundColor: colors.brandSecondary, color: colors.onBrandSecondary },
+  }),
+);

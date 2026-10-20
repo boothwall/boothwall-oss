@@ -5,8 +5,14 @@ declare module "react-test-renderer" {
   export type ReactTestInstance = {
     props: Record<string, unknown>;
     findAllByType(type: ElementType): ReactTestInstance[];
+    findAllByProps(props: Record<string, unknown>): ReactTestInstance[];
   };
-  export type ReactTestRenderer = { root: ReactTestInstance; unmount(): void };
+  export type ReactTestRenderer = {
+    root: ReactTestInstance;
+    unmount(): void;
+    update(element: ReactElement): void;
+    toJSON(): unknown;
+  };
 
   export function act(callback: () => void): void;
   export function create(element: ReactElement): ReactTestRenderer;

@@ -1,1 +1,7 @@
-ADMIN_TOKEN=change-me-to-a-long-random-string
+# Copy to .dev.vars. Empty values are filled with random ones by `pnpm boothwall setup` and
+# `pnpm demo`; never deploy a value from an example file.
+# Control passcode, 12+ characters. Setup asks for one or generates one.
+ADMIN_TOKEN=
+# A separate random server key, 32+ characters. Never reuse ADMIN_TOKEN, expose this key to a
+# client, or rotate it during active rate windows.
+CLIENT_FINGERPRINT_KEY=

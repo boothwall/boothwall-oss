@@ -1,10 +1,17 @@
-import type { PhotoDTO, WallPhotoEvent, WallSnapshotDTO, WallStatsDTO } from "@boothwall/shared";
+import {
+  DEFAULT_SETTINGS,
+  type PhotoDTO,
+  type ReactionCounts,
+  type WallPhotoEvent,
+  type WallSettings,
+  type WallSnapshotDTO,
+  type WallStatsDTO,
+} from "@boothwall/shared";
 
 import { POOL_LIMIT } from "../constants/feed";
-import { SLOTS } from "../constants/layout";
+import { SLOT_COUNT } from "../constants/layout";
 
-/** How many polaroids float on screen at once (Fire TV Stick budget). */
-export const SLOT_COUNT = SLOTS.length;
+export { SLOT_COUNT };
 
 export type WallState = {
   /** Approved photos, newest first. */
@@ -16,19 +23,24 @@ export type WallState = {
   fresh: string[];
   /**
    * Photos the director needs to stay where they are (the selection and a queued arrival):
-   * rotation, arrivals and the remote never put another photo in their slots.
+   * arrivals never land in their slots.
    */
   pinned: string[];
+  /** Bumped on every page turn, so the collage can swap the cards in a wave. */
+  turn: number;
+  /** Live settings from the Control panel (or the config defaults). */
+  settings: WallSettings;
 };
 
 export type WallAction =
   | { type: "snapshot"; snapshot: WallSnapshotDTO }
   | { type: "event"; event: WallPhotoEvent }
-  /** Swap one on-screen photo for a waiting one, never touching a pinned or fresh one. */
-  | { type: "rotate" }
-  /** Put a photo on screen (the remote browsed to it), in the slot `slotToShow` picks. */
-  | { type: "show"; photoId: string }
+  /** Replace every card with the next page (see `nextPage`). */
+  | { type: "page"; slots: (string | null)[] }
   | { type: "pin"; ids: string[] }
+  | { type: "settings"; settings: WallSettings }
+  /** A photo's latest reaction totals. */
+  | { type: "reactions"; photoId: string; counts: ReactionCounts }
   | { type: "settled"; photoId: string };
 
 export const initialWallState: WallState = {
@@ -37,6 +49,8 @@ export const initialWallState: WallState = {
   stats: { total: 0, byTribe: {} },
   fresh: [],
   pinned: [],
+  turn: 0,
+  settings: DEFAULT_SETTINGS,
 };
 
 const createdAt = (pool: PhotoDTO[], id: string | null) =>
@@ -62,19 +76,6 @@ const slotFor = (state: WallState) => {
   );
 };
 
-/**
- * Where a photo the remote browsed to appears: its own slot if it's on screen, else an empty
- * one, else the slot with the oldest photo that isn't pinned or a live arrival.
- */
-export function slotToShow(state: WallState, photoId: string): number {
-  const current = state.slots.indexOf(photoId);
-  if (current !== -1) return current;
-  const empty = state.slots.indexOf(null);
-  if (empty !== -1) return empty;
-  const spare = (id: string) => state.pinned.includes(id) || state.fresh.includes(id);
-  return oldestSlot(state, spare) ?? 0;
-}
-
 const offscreen = (state: WallState) =>
   state.pool.filter((photo) => !state.slots.includes(photo.id));
 
@@ -84,7 +85,7 @@ const place = (slots: (string | null)[], index: number, id: string | null) =>
 /**
  * Keeps an 8-hour booth from drifting: a slot whose photo fell out of the capped pool gets a
  * waiting one, and only photos still on screen keep the "new" treatment (a card replaced before
- * its badge settled would otherwise stay in `fresh` forever and never rotate out).
+ * its badge settled would otherwise stay in `fresh` forever).
  */
 function tidy(state: WallState): WallState {
   const inPool = new Set(state.pool.map((photo) => photo.id));
@@ -109,7 +110,8 @@ export function wallReducer(state: WallState, action: WallAction): WallState {
       const kept = state.slots.map((id) => (pool.some((photo) => photo.id === id) ? id : null));
       const queue = pool.filter((photo) => !kept.includes(photo.id));
       const slots = kept.map((id) => id ?? queue.shift()?.id ?? null);
-      return tidy({ ...state, pool, slots, stats: action.snapshot.stats });
+      const { stats, settings } = action.snapshot;
+      return tidy({ ...state, pool, slots, stats, settings });
     }
 
     case "event": {
@@ -138,26 +140,22 @@ export function wallReducer(state: WallState, action: WallAction): WallState {
       return { ...next, slots: place(state.slots, index, offscreen(next)[0]?.id ?? null) };
     }
 
-    case "rotate": {
-      // Keeps a busy wall moving: a random unprotected slot gets a photo waiting off-screen.
-      const waiting = offscreen(state);
-      const candidates = state.slots
-        .map((id, index) => ({ id, index }))
-        .filter(({ id }) => id !== null && !state.pinned.includes(id) && !state.fresh.includes(id));
-      const incoming = waiting[Math.floor(Math.random() * waiting.length)];
-      const target = candidates[Math.floor(Math.random() * candidates.length)];
-      if (!incoming || !target) return state;
-      return { ...state, slots: place(state.slots, target.index, incoming.id) };
-    }
-
-    case "show": {
-      if (!state.pool.some((photo) => photo.id === action.photoId)) return state;
-      const slot = slotToShow(state, action.photoId);
-      return tidy({ ...state, slots: place(state.slots, slot, action.photoId) });
-    }
+    case "page":
+      return tidy({ ...state, slots: action.slots, turn: state.turn + 1 });
 
     case "pin":
       return { ...state, pinned: action.ids };
+
+    case "settings":
+      return { ...state, settings: action.settings };
+
+    case "reactions": {
+      if (!state.pool.some((photo) => photo.id === action.photoId)) return state;
+      const pool = state.pool.map((photo) =>
+        photo.id === action.photoId ? { ...photo, reactions: action.counts } : photo,
+      );
+      return { ...state, pool };
+    }
 
     case "settled":
       return { ...state, fresh: state.fresh.filter((id) => id !== action.photoId) };

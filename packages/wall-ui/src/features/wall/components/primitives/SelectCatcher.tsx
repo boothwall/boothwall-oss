@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet } from "react-native";
 
-import { wallCopy } from "../../constants/copy";
+import { useWallCopy } from "#copy";
 
 export type SelectCatcherProps = {
   onSelect: () => void;
@@ -9,6 +9,7 @@ export type SelectCatcherProps = {
 
 /** Some remotes deliver OK only as a press on the focused view; this invisible target catches it. */
 export function SelectCatcher({ onSelect }: SelectCatcherProps) {
+  const { wall: wallCopy } = useWallCopy();
   return (
     <Pressable
       hasTVPreferredFocus

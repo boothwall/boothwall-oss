@@ -1,0 +1,167 @@
+/* Entrance animations used by the primitives (Dialog) and handy for lists and toasts. */
+@keyframes sheet-in {
+  0% {
+    transform: translateY(100%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes rise-in {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-sheet-in {
+  animation: sheet-in 280ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@utility animate-pop-in {
+  animation: pop-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+@utility animate-rise-in {
+  animation: rise-in 220ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+/* A quick swell for a counter that just went up; re-run it by changing the element's key. */
+@keyframes bump {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@utility animate-bump {
+  animation: bump 260ms cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+}
+
+/*
+ * An emoji floating up and fading out of the button that sent it. --float-drift (a length,
+ * default 0) leans it sideways, so a quick run of taps fans out instead of stacking.
+ */
+@keyframes float-up {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -12px) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--float-drift, 0px)), -64px) scale(1);
+  }
+}
+
+@utility animate-float-up {
+  animation: float-up 700ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/*
+ * A soft light band sweeping across a photo that is still loading. The band is
+ * --shimmer-color (default: a faint white), so it works on dark surfaces and on paper.
+ */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* The quiet band for placeholders on the canvas, from the theme. */
+@utility shimmer-subtle {
+  --shimmer-color: var(--u-shimmer-subtle);
+}
+
+@utility animate-shimmer {
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    var(--shimmer-color, rgb(255 255 255 / 0.6)) 50%,
+    transparent 80%
+  );
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/*
+ * A big heart that pops over a photo and fades: the answer to a double-tap. Reduced motion
+ * keeps only a short fade, so the tap still visibly lands.
+ */
+@keyframes heart-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  30% {
+    transform: scale(0.92);
+  }
+  45% {
+    transform: scale(1);
+  }
+  75% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-12%) scale(1.08);
+  }
+}
+
+@keyframes heart-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  30%,
+  60% {
+    opacity: 1;
+  }
+}
+
+@utility animate-heart-burst {
+  animation: heart-burst 820ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+/*
+ * base.css cuts every animation to nothing for reduced motion. This sits in the same layer and
+ * wins on specificity, so the heart fades instead of vanishing unseen.
+ */
+@layer base {
+  @media (prefers-reduced-motion: reduce) {
+    .animate-heart-burst {
+      animation: heart-fade 480ms ease-out both !important;
+    }
+  }
+}
