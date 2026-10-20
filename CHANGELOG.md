@@ -4,6 +4,12 @@ Notable changes to BoothWall, newest first. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [3.0.4] - 2026-10-20
+
+### Fixed
+
+- The guest page keeps checking its photo after approval, including auto-approved uploads, so a later host removal replaces the live message. Token-backed checks retain the existing five-second interval and 15-minute limit.
+
 ## [3.0.3] - 2026-10-20
 
 ### Changed
@@ -115,7 +121,8 @@ Live Wall, the photo wall I built on my own as a booth demo and first showed at 
 - `apps/api`: a Hono API on Cloudflare Workers with D1, R2 and a hibernating Durable Object that pushes new photos to every wall.
 - `packages/shared`: the contracts all three apps share.
 
-[Unreleased]: https://github.com/boothwall/boothwall-oss/compare/v3.0.3...HEAD
+[Unreleased]: https://github.com/boothwall/boothwall-oss/compare/v3.0.4...HEAD
+[3.0.4]: https://github.com/boothwall/boothwall-oss/compare/v3.0.3...v3.0.4
 [3.0.3]: https://github.com/boothwall/boothwall-oss/compare/v3.0.2...v3.0.3
 [3.0.2]: https://github.com/boothwall/boothwall-oss/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/boothwall/boothwall-oss/compare/v3.0.0...v3.0.1

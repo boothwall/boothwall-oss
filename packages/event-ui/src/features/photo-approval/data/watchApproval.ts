@@ -17,7 +17,8 @@ export type WatchApprovalOptions = {
 /**
  * Socket notification plus polling fallback; all work is owned by this event subscription.
  * With the delete token each poll asks the photo's status; a host that can't answer it is
- * watched through the wall snapshot instead.
+ * watched through the wall snapshot instead. Token-backed watches continue after approval
+ * so a later removal can be reported, until declined or disposed by the caller.
  */
 export function watchApproval(
   transport: EventTransport,
@@ -27,6 +28,7 @@ export function watchApproval(
 ): () => void {
   let statusToken = deleteToken;
   let done = false;
+  let approved = false;
   let checking = false;
   let attempt = 0;
   let socket: WebSocket | undefined;
@@ -34,9 +36,16 @@ export function watchApproval(
   let retry: number | undefined;
   const finish = (declined = false) => {
     if (done) return;
-    stop();
-    if (declined) onDeclined?.();
-    else onApproved();
+    if (declined) {
+      stop();
+      onDeclined?.();
+    } else {
+      if (!statusToken) stop();
+      if (!approved) {
+        approved = true;
+        onApproved();
+      }
+    }
   };
   const checkWall = async () => {
     const response = await transport.request(`/photos?limit=${APPROVAL_POLL_LIMIT}`, {
@@ -55,7 +64,8 @@ export function watchApproval(
       if (state === "live" || state === "declined") finish(state === "declined");
       else if (state === null) {
         statusToken = undefined;
-        await checkWall();
+        if (approved) finish();
+        else await checkWall();
       }
     } catch {
       /* The next poll or socket message can recover. */

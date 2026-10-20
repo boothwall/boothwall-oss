@@ -19,7 +19,8 @@ type Settled = { id: string; state: Exclude<GuestPhotoState, "waiting"> };
 /**
  * Whether a just-sent photo is on the wall yet. A photo approved at upload is live at once;
  * a pending one is watched until it lands (see watchApproval) or for a quarter of an hour.
- * With the sender's delete token the watch also hears when the host declines it.
+ * With the sender's delete token, both are watched for that quarter hour, including after
+ * approval, so the page also hears when the host removes the photo.
  */
 export function usePhotoApproval(
   photo: Pick<PhotoDTO, "id" | "status"> | null,
@@ -32,7 +33,7 @@ export function usePhotoApproval(
   const [slow, setSlow] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id || approvedAtUpload) return;
+    if (!id || (approvedAtUpload && !deleteToken)) return;
     const stop = watchApproval(transport, id, () => setSettled({ id, state: "live" }), {
       deleteToken,
       onDeclined: () => setSettled({ id, state: "declined" }),
@@ -46,10 +47,7 @@ export function usePhotoApproval(
     };
   }, [id, approvedAtUpload, deleteToken, transport]);
 
-  const state: GuestPhotoState = approvedAtUpload
-    ? "live"
-    : id !== null && settled?.id === id
-      ? settled.state
-      : "waiting";
+  const state: GuestPhotoState =
+    id !== null && settled?.id === id ? settled.state : approvedAtUpload ? "live" : "waiting";
   return { live: state === "live", slow: state === "waiting" && id !== null && slow === id, state };
 }
