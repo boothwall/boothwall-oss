@@ -75,11 +75,13 @@ export const size = {
   announcementSheenWidth: 140,
   announcementSheenHeight: 54,
   announcementLift: 3,
-  /** The repo source card's QR (58 dp of code in a 66 dp paper frame) and GitHub mark. */
-  repoQr: 58,
+  /** The repo source card's QR (72 dp of code in an 80 dp paper frame), GitHub mark and the */
+  /** width its hero name fits into (the panel less the card's padding and the mark's gap). */
+  repoQr: 72,
   repoQrPad: 4,
   repoQrRadius: 6,
-  repoMark: 14,
+  repoMark: 15,
+  repoHeroWidth: 190,
   /** The GitHub mark on the source card, beside the author's handle. */
   sourceMark: 15,
   /** On an empty wall the QR is the whole point, and Who's here has nothing to say yet. */

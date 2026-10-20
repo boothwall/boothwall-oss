@@ -4,6 +4,7 @@ import { Image, StyleSheet, Text, View, type ViewStyle } from "react-native";
 
 import githubMark from "#assets/icons/github-mark.png";
 import { useWallCopy } from "#copy";
+import { fitFontSize } from "#features/wall/utils/fitFontSize";
 import { qrAddress } from "#features/wall/utils/qrAddress";
 import { imageSource } from "#foundation/assets";
 import { themedStyles, useThemedStyles } from "#foundation/theme";
@@ -19,14 +20,21 @@ export type RepoSourceCardProps = {
 };
 
 /**
- * The source card for a room of developers: "Open source", the repo's name as the hero, and a
- * QR straight to the code beside the host, the license and why to scan. No address is printed.
+ * The source card for a room of developers, kept quiet beside the photos: the repo's name beside
+ * the host's mark, then a big QR straight to the code with why to scan and the license. The owner
+ * is left to the QR and the read-out label, so the name never truncates.
  */
 export function RepoSourceCard({ source, style }: RepoSourceCardProps) {
   const { wall: wallCopy } = useWallCopy();
   const tint = useThemedStyles(themed);
   const qr = useMemo(() => qrAddress((boothwallConfig as BoothwallConfig).urls.source), []);
-  const cut = source.repo.indexOf("/") + 1;
+  const name = source.repo.slice(source.repo.indexOf("/") + 1);
+  const github = /^github\.com$/i.test(source.host ?? "");
+  const nameSize = fitFontSize(name, size.repoHeroWidth - (github ? size.repoMark : 0), {
+    max: fontSize.body,
+    min: fontSize.fine,
+    charWidth: 0.6,
+  });
   const { title, pitch } = wallCopy.author;
   return (
     <View
@@ -35,36 +43,28 @@ export function RepoSourceCard({ source, style }: RepoSourceCardProps) {
       accessibilityLabel={`${title}: ${source.repo}`}
       testID="wall-source"
     >
-      <Text style={[styles.eyebrow, tint.eyebrow]} numberOfLines={1}>
-        {title}
-      </Text>
-      <Text style={styles.repo} numberOfLines={1}>
-        <Text style={styles.owner}>{source.repo.slice(0, cut)}</Text>
-        {source.repo.slice(cut)}
-      </Text>
+      <View style={styles.hero}>
+        {github && <Image source={GITHUB_MARK} style={styles.mark} accessible={false} />}
+        <Text style={[styles.name, { fontSize: nameSize }]} numberOfLines={1}>
+          {name}
+        </Text>
+      </View>
       <View style={styles.foot}>
         <View style={styles.qrFrame}>
           <QrCode value={qr} size={size.repoQr} errorCorrection="L" />
         </View>
         <View style={styles.text}>
-          {source.host ? (
-            <View style={styles.host}>
-              {/^github\.com$/i.test(source.host) && (
-                <Image source={GITHUB_MARK} style={styles.mark} accessible={false} />
-              )}
-              <Text style={styles.hostName} numberOfLines={1}>
-                {source.host}
-              </Text>
-            </View>
-          ) : null}
-          <Text style={styles.line} numberOfLines={2}>
-            {source.license ? (
-              <>
-                <Text style={styles.license}>{source.license}</Text> ·{" "}
-              </>
-            ) : null}
-            {source.line ?? pitch}
+          <Text style={[styles.eyebrow, tint.eyebrow]} numberOfLines={1}>
+            {title}
           </Text>
+          <Text style={styles.pitch} numberOfLines={3}>
+            {pitch.charAt(0).toUpperCase() + pitch.slice(1)}
+          </Text>
+          {source.license ? (
+            <Text style={styles.license} numberOfLines={1}>
+              {source.license}
+            </Text>
+          ) : null}
         </View>
       </View>
     </View>
@@ -78,23 +78,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingBottom: space.sm,
     paddingHorizontal: space.sm + 1,
-    paddingTop: space.sm + 1,
+    paddingTop: space.sm - 1,
   },
-  eyebrow: {
-    fontSize: fontSize.caption,
-    fontWeight: fontWeight.black,
-    letterSpacing: tracking.label,
-    textTransform: "uppercase",
+  hero: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: space.xs + 1,
   },
-  repo: {
+  mark: {
+    height: size.repoMark,
+    width: size.repoMark,
+  },
+  name: {
     color: color.textPrimary,
-    fontSize: fontSize.callout,
-    fontWeight: fontWeight.heavy,
-    letterSpacing: tracking.callout,
-    marginTop: 1,
-  },
-  owner: {
-    color: color.textSecondary,
+    flexShrink: 1,
+    fontWeight: fontWeight.bold,
   },
   foot: {
     alignItems: "center",
@@ -109,31 +107,23 @@ const styles = StyleSheet.create({
   },
   text: {
     flex: 1,
+    gap: 2,
   },
-  host: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: space.xs + 1,
+  eyebrow: {
+    fontSize: fontSize.fine,
+    fontWeight: fontWeight.heavy,
   },
-  mark: {
-    height: size.repoMark,
-    opacity: 0.85,
-    width: size.repoMark,
-  },
-  hostName: {
-    color: color.textMuted,
-    flexShrink: 1,
-    fontSize: fontSize.caption,
-    fontWeight: fontWeight.semibold,
-  },
-  line: {
+  pitch: {
     color: color.textSecondary,
-    fontSize: fontSize.caption,
+    fontSize: fontSize.fine,
     fontWeight: fontWeight.semibold,
+    lineHeight: fontSize.fine + 3,
   },
   license: {
-    color: color.textPrimary,
-    fontWeight: fontWeight.heavy,
+    color: color.textMuted,
+    fontSize: fontSize.fine,
+    fontWeight: fontWeight.bold,
+    letterSpacing: tracking.label,
   },
 });
 

@@ -4,6 +4,13 @@ Notable changes to BoothWall, newest first. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [3.0.3] - 2026-10-20
+
+### Changed
+
+- The wall's repo card (`wall.source`) is quieter: the repo's name beside the host's mark, which no longer cuts it off, and a bigger QR beside "Open source", why to scan and the license, in smaller type so it doesn't compete with the photos.
+- The social preview image names the repo at github.com/boothwall/boothwall-oss.
+
 ## [3.0.2] - 2026-10-20
 
 ### Changed
@@ -108,7 +115,8 @@ Live Wall, the photo wall I built on my own as a booth demo and first showed at 
 - `apps/api`: a Hono API on Cloudflare Workers with D1, R2 and a hibernating Durable Object that pushes new photos to every wall.
 - `packages/shared`: the contracts all three apps share.
 
-[Unreleased]: https://github.com/boothwall/boothwall-oss/compare/v3.0.2...HEAD
+[Unreleased]: https://github.com/boothwall/boothwall-oss/compare/v3.0.3...HEAD
+[3.0.3]: https://github.com/boothwall/boothwall-oss/compare/v3.0.2...v3.0.3
 [3.0.2]: https://github.com/boothwall/boothwall-oss/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/boothwall/boothwall-oss/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/boothwall/boothwall-oss/releases/tag/v3.0.0

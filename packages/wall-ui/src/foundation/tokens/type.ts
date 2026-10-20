@@ -1,6 +1,8 @@
 // Type sizes are dp on Vega's 960x540 canvas (1080p at 2x).
 
 export const fontSize = {
+  /** Quiet secondary lines on a card that must not compete with the photos, such as the repo card. */
+  fine: 12,
   /** The smallest text on the wall: 28 px at 1080p, still readable from three metres. */
   caption: 14,
   body: 15,

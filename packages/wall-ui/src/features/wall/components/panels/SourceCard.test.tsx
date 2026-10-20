@@ -37,7 +37,7 @@ it("renders custom credit text visibly for connection defaults and live settings
   act(() => renderer.unmount());
 });
 
-it("names the repo when the look sets one, with a QR straight to it and no address printed", () => {
+it("names the repo beside the host's mark when the look sets one, with a QR straight to it and no address printed", () => {
   let renderer!: ReactTestRenderer;
   const source = { repo: "boothwall/boothwall-oss", host: "github.com", license: "MIT" };
   act(() => {
@@ -51,10 +51,11 @@ it("names the repo when the look sets one, with a QR straight to it and no addre
     .findAllByType(Text)
     .flatMap((node) => [node.props.children].flat())
     .filter((part) => typeof part === "string");
-  expect(texts).toEqual(
-    expect.arrayContaining(["Open source", "boothwall/", "boothwall-oss", "github.com", "MIT"]),
+  expect(texts).toEqual(expect.arrayContaining(["boothwall-oss", "Open source", "MIT"]));
+  expect(texts.join(" ")).not.toMatch(/https?:|github\.com|boothwall\//i);
+  expect(renderer.root.findAllByProps({ testID: "wall-source" })[0]?.props.accessibilityLabel).toBe(
+    "Open source: boothwall/boothwall-oss",
   );
-  expect(texts.join(" ")).not.toMatch(/https?:|\/GH/i);
   const qr = { accessibilityLabel: "HTTPS://GITHUB.COM/BOOTHWALL/BOOTHWALL-OSS" };
   expect(renderer.root.findAllByProps(qr).length).toBeGreaterThan(0);
   act(() => renderer.unmount());
