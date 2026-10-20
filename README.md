@@ -1,8 +1,6 @@
 <h1>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="brand/logos/boothwall-open-source-on-dark.svg">
-    <img src="brand/logos/boothwall-open-source-on-light.svg" alt="BoothWall OSS" width="360">
-  </picture>
+  <img src="brand/logos/boothwall-open-source-on-light.svg#gh-light-mode-only" alt="BoothWall OSS" width="360">
+  <img src="brand/logos/boothwall-open-source-on-dark.svg#gh-dark-mode-only" alt="BoothWall OSS" width="360">
 </h1>
 
 **Your moment on the big screen.** A live photo wall for any event: guests send photos from their phones, it plays on Fire TV.

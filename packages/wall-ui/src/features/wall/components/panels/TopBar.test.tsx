@@ -81,13 +81,13 @@ function header(look: { header?: "classic" | "split" }) {
 it("keeps the classic header unless the split look is chosen", () => {
   const classic = header({});
   expect(classic).toMatchObject({ lockup: false, logo: true, live: true, count: true });
-  expect(classic.texts).toEqual(expect.arrayContaining(["Hall A", "Demo", "#Launch"]));
+  expect(classic.texts).toEqual(expect.arrayContaining(["Hall A", "DEMO", "#Launch"]));
 });
 
 it("splits the header: the lockup, then the event with its count and Live on two rows", () => {
   const split = header({ header: "split" });
   expect(split).toMatchObject({ lockup: true, logo: true, live: true, count: true });
-  expect(split.texts).toEqual(expect.arrayContaining(["2026", "#Launch", "Hall A", "Demo", "·"]));
+  expect(split.texts).toEqual(expect.arrayContaining(["2026", "#Launch", "Hall A", "DEMO", "·"]));
 });
 
 it("lets a wide event wordmark keep its shape in the split header on the web", () => {

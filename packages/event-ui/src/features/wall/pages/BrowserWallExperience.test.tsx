@@ -10,7 +10,7 @@ import { createRuntimeFixture } from "#testing/runtime";
 import { BrowserWallExperience } from "./BrowserWallExperience";
 const runtime = createRuntimeFixture();
 runtime.demo = true;
-runtime.presentation.badge = "Booth 14";
+runtime.presentation.badge = "BOOTH 14";
 function WallPage() {
   return (
     <EventProvider runtime={runtime}>
@@ -52,7 +52,7 @@ describe("WallPage", () => {
 
     expect(screen.getByTestId("wall-screen")).toBeTruthy();
     expect(within(screen.getByTestId("wall-header")).getByText(EVENT.hashtag)).toBeTruthy();
-    expect(screen.getByTestId("badge-chip").textContent).toBe("Booth 14");
+    expect(screen.getByTestId("badge-chip").textContent).toBe("BOOTH 14");
   });
 
   it("shows the full screen hint, then fades it out", () => {

@@ -18,13 +18,18 @@ export function BadgeChip({ label, height }: BadgeChipProps) {
       style={[styles.chip, tint.chip, height !== undefined && [styles.fixed, { height }]]}
       testID="badge-chip"
     >
-      <Text style={[styles.label, tint.label]}>{label}</Text>
+      <Text numberOfLines={1} style={[styles.label, tint.label]}>
+        {label.toUpperCase()}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Upper-cased in the string, not by style: Vega sizes the box before a text transform, so the
+  // last letter wrapped onto a second line on a Fire TV Stick.
   chip: {
+    flexShrink: 0,
     borderRadius: radius.pill,
     paddingHorizontal: space.sm + 2,
     paddingVertical: space.xs,
@@ -37,7 +42,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.caption,
     fontWeight: "800",
     letterSpacing: tracking.label,
-    textTransform: "uppercase",
   },
 });
 

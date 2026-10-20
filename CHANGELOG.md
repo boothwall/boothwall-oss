@@ -4,6 +4,13 @@ Notable changes to BoothWall, newest first. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-10-20
+
+### Fixed
+
+- The badge beside the event title stays on one line on a Fire TV Stick; its last letter used to wrap onto a second line.
+- The README's logo follows GitHub's light or dark theme, so it stays readable when your system and GitHub use different themes.
+
 ## [3.0.0] - 2026-10-20
 
 One event photo wall you run yourself: a Vega OS app for the Fire TV, a web display, a guest upload page and a Control panel, all driven by one config file. This edition's native TV app is Vega OS only, and you build it yourself: there is no store build and no pairing, because the app you build already knows its wall. The room can work the wall from the remote, a photo call brings a burst of new photos, and `pnpm try` puts a wall on the Vega Virtual Device in one command.
@@ -95,7 +102,8 @@ Live Wall, the photo wall I built on my own as a booth demo and first showed at 
 - `apps/api`: a Hono API on Cloudflare Workers with D1, R2 and a hibernating Durable Object that pushes new photos to every wall.
 - `packages/shared`: the contracts all three apps share.
 
-[Unreleased]: https://github.com/boothwall/boothwall-oss/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/boothwall/boothwall-oss/compare/v3.0.1...HEAD
+[3.0.1]: https://github.com/boothwall/boothwall-oss/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/boothwall/boothwall-oss/releases/tag/v3.0.0
 [2.0.0]: https://github.com/boothwall/boothwall-oss/releases/tag/v2.0.0
 [1.0.0]: https://github.com/boothwall/boothwall-oss/releases/tag/v1.0.0
