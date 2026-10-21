@@ -87,8 +87,8 @@ test("the saved-passcode hint and the shortcuts appear only when they apply", ()
     ["c", "Control"],
     ["q", "quit"],
   ];
-  const lines = strip(demoReady(example, { ...rich, columns: 20 }, { keys })).split("\n");
-  assert.deepEqual(lines.slice(-2), ["w wall  ·  c Control", "q quit"]);
+  const lines = strip(demoReady(example, { ...rich, columns: 18 }, { keys })).split("\n");
+  assert.deepEqual(lines.slice(-2), ["w wall   c Control", "q quit"]);
 });
 
 test("real QR output is compact, keeps its quiet zone and contrast, and respects the width", () => {

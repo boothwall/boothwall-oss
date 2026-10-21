@@ -4,7 +4,6 @@ import { terminalOutput } from "../ui.mjs";
 import { besides, centre, painter, visibleWidth } from "./style.mjs";
 
 const GAP = 4;
-const RULE = 72;
 
 /** Cosmetic output only: no servers, device discovery or credential reads. */
 export function demoIntro({ shared }, output = terminalOutput()) {
@@ -94,26 +93,27 @@ export function demoReady(
       qr = [];
     }
   }
-  const rule = rich ? [s.dim("─".repeat(Math.min(columns, RULE)))] : [];
   const took = Number.isFinite(info.readyMs)
     ? s.dim(`  ready in ${(info.readyMs / 1000).toFixed(1)}s`)
     : "";
   const note = info.shared
     ? s.dim("VPNs, firewalls or guest-network isolation can keep phones out.")
     : `For phones, restart with ${s.bold("pnpm demo --lan")}.`;
+  const body = [...layout(roles(info, s), qr, columns, s), "", note];
+  // Dividers as wide as the card itself, never wider than the terminal.
+  const width = Math.min(columns, Math.max(...body.map(visibleWidth)));
   const shortcuts = wrap(
     keys.map(([key, label]) => `${s.accent(key)} ${label}`),
-    s.dim("  ·  "),
-    columns,
+    "   ",
+    width,
   );
+  const rule = rich ? [s.dim("─".repeat(width))] : [];
   return [
     "",
     ...rule,
     `${rich ? `${s.accent("✦")} ` : ""}${s.bold("Your wall is live.")}${took}`,
     "",
-    ...layout(roles(info, s), qr, columns, s),
-    "",
-    note,
+    ...body,
     ...rule,
     ...shortcuts,
   ].join("\n");

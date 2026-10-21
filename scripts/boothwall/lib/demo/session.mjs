@@ -7,8 +7,8 @@ import { painter } from "./style.mjs";
 export const sessionKeys = ({ tvHelp }) => [
   ["w", "wall"],
   ["c", "Control"],
-  ["s", "guest page"],
-  ["p", "copy passcode"],
+  ["s", "guest"],
+  ["p", "passcode"],
   ...(tvHelp ? [["t", "TV setup"]] : []),
   ["r", "card"],
   ["q", "quit"],
