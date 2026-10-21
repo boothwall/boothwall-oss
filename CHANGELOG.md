@@ -132,7 +132,8 @@ Live Wall, the photo wall I built on my own as a booth demo and first showed at 
 - `apps/api`: a Hono API on Cloudflare Workers with D1, R2 and a hibernating Durable Object that pushes new photos to every wall.
 - `packages/shared`: the contracts all three apps share.
 
-[Unreleased]: https://github.com/boothwall/boothwall-oss/compare/v3.0.4...HEAD
+[Unreleased]: https://github.com/boothwall/boothwall-oss/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/boothwall/boothwall-oss/compare/v3.0.4...v3.1.0
 [3.0.4]: https://github.com/boothwall/boothwall-oss/compare/v3.0.3...v3.0.4
 [3.0.3]: https://github.com/boothwall/boothwall-oss/compare/v3.0.2...v3.0.3
 [3.0.2]: https://github.com/boothwall/boothwall-oss/compare/v3.0.1...v3.0.2
