@@ -11,6 +11,9 @@ A conference booth, a trade fair, a wedding or a party: guests scan the QR code 
 
 **Try it:** [live demo](https://oss.boothwall.com/demo/) · [site and guides](https://oss.boothwall.com)
 
+[![Watch the BoothWall OSS tour (2:48) on YouTube](docs/images/video-tour.jpg)](https://www.youtube.com/watch?v=GvZY09DWOCs)
+<sub>▶ <b>2:48 video tour</b>: guest → host → Fire TV, on the real Vega app.</sub>
+
 On the live demo a person approves each photo by hand, so yours may take a while to appear. To approve your own, run it on your machine with `pnpm demo` ([below](#try-it)).
 
 [![CI](https://github.com/boothwall/boothwall-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/boothwall/boothwall-oss/actions/workflows/ci.yml)
