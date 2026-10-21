@@ -4,6 +4,14 @@ Notable changes to BoothWall, newest first. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+### Added
+
+- `pnpm demo --lan` opens with a live session: each startup step with its measured time, then a ready card with the guest QR beside the guest, host and wall links and the local passcode. While it runs, new uploads and approvals appear in the terminal as they happen, and single keys open the wall (`w`), Control (`c`) or the guest page (`s`), copy the passcode (`p`), show TV setup (`t`), reprint the card (`r`) or stop (`q`).
+
+### Changed
+
+- The demo's terminal output uses the OSS lockup colours and a smaller guest QR, stacked under the guest link on narrow terminals. Redirected output, CI, `TERM=dumb` and `NO_COLOR` keep plain text with the full links and no QR, shortcuts or live feed.
+
 ## [3.0.4] - 2026-10-20
 
 ### Fixed
