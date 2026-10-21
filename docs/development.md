@@ -8,22 +8,23 @@ Follow [Try it](../README.md#try-it) in the README. You don't need a Fire TV or 
 
 ## Commands
 
-| Command                                              | What it does                                                                                                              |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm demo`                                          | The API and the web app locally, with demo photos and the passcode printed (see [below](#running-the-api-locally))        |
-| `pnpm demo --lan`                                    | The same on your machine's network address, for a phone, a Fire TV or the Virtual Device                                  |
-| `pnpm try`                                           | `pnpm demo --lan` plus the TV app, built and opened on a running Virtual Device                                           |
-| `pnpm web:dev`                                       | The web app: the wall at `/`, the upload page at `/snap`, the Control panel at `/control`                                 |
-| `pnpm api:dev`                                       | The API on your machine, no Cloudflare account needed (see [below](#running-the-api-locally))                             |
-| `pnpm tv:build:debug` / `tv:build:release`           | Build the TV app, one `.vpkg` per architecture                                                                            |
-| `pnpm tv:vvd:start:1080` / `tv:vvd:restart:1080`     | Start or restart the Virtual Device at 1080p (restart also relaunches the installed app; it doesn't rebuild)              |
-| `pnpm tv:run:vvd`                                    | Install and launch the Apple Silicon debug build on the Virtual Device (on an Intel Mac, use `pnpm try`)                  |
-| `pnpm tv:start`                                      | Metro, for a debug build that loads its JavaScript from your machine                                                      |
-| `pnpm remote`                                        | A remote in your browser at http://localhost:4400 for the Virtual Device; `VEGA_DEVICE=<serial>` sends to a Fire TV Stick |
-| `pnpm boothwall setup`                               | One-time Cloudflare setup and first deploy                                                                                |
-| `pnpm boothwall deploy`                              | Apply migrations, then redeploy the API and the web app                                                                   |
-| `pnpm boothwall example [name]`                      | List the examples, or apply one's config and artwork                                                                      |
-| `pnpm boothwall settings-preview` / `settings-apply` | Move settings saved by an older version into the config ([guide](config-migration.md))                                    |
+| Command                                              | What it does                                                                                                                                                                      |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm demo`                                          | The API and the web app locally, with demo photos and the passcode printed (see [below](#running-the-api-locally))                                                                |
+| `pnpm demo --lan`                                    | The same on your machine's network address, for a phone, a Fire TV or the Virtual Device                                                                                          |
+| `pnpm try`                                           | `pnpm demo --lan` plus the TV app, built and opened on a running Virtual Device                                                                                                   |
+| `pnpm web:dev`                                       | The web app: the wall at `/`, the upload page at `/snap`, the Control panel at `/control`                                                                                         |
+| `pnpm api:dev`                                       | The API on your machine, no Cloudflare account needed (see [below](#running-the-api-locally))                                                                                     |
+| `pnpm tv:build:debug` / `tv:build:release`           | Build the TV app, one `.vpkg` per architecture                                                                                                                                    |
+| `pnpm tv:vvd:start:1080` / `tv:vvd:restart:1080`     | Start or restart the Virtual Device at 1080p (restart also relaunches the installed app; it doesn't rebuild)                                                                      |
+| `pnpm tv:run:vvd`                                    | Install and launch the Apple Silicon debug build on the Virtual Device (on an Intel Mac, use `pnpm try`)                                                                          |
+| `pnpm tv:start`                                      | Metro, for a debug build that loads its JavaScript from your machine                                                                                                              |
+| `pnpm remote`                                        | A remote in your browser at http://localhost:4400 for the Virtual Device; `VEGA_DEVICE=<serial>` sends to a Fire TV Stick                                                         |
+| `pnpm remote:vega`                                   | Launch the pinned [Vega web remote](https://github.com/boothwall/vega-web-remote/tree/v0.2.2): device picker, media keys, held OK and text entry; first use downloads from GitHub |
+| `pnpm boothwall setup`                               | One-time Cloudflare setup and first deploy                                                                                                                                        |
+| `pnpm boothwall deploy`                              | Apply migrations, then redeploy the API and the web app                                                                                                                           |
+| `pnpm boothwall example [name]`                      | List the examples, or apply one's config and artwork                                                                                                                              |
+| `pnpm boothwall settings-preview` / `settings-apply` | Move settings saved by an older version into the config ([guide](config-migration.md))                                                                                            |
 
 ## Running the API locally
 

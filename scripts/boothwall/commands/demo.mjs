@@ -167,6 +167,7 @@ ${dim("pnpm tv:build:debug && pnpm tv:run:vvd")}. The config already points the 
   try {
     await buildAndOpenOnVirtualDevice(cli);
     ok("The wall is on the Virtual Device. Hold OK there for a photo call.");
+    log(`    No remote at hand? ${bold("pnpm remote:vega")} opens one in a browser tab.`);
   } catch (error) {
     log(`The TV app didn't open: ${error.message}
 Try ${dim("pnpm tv:build:debug && pnpm tv:run:vvd")}.`);

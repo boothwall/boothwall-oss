@@ -4,9 +4,12 @@ Notable changes to BoothWall, newest first. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-21
+
 ### Added
 
 - `pnpm demo --lan` opens with a live session: each startup step with its measured time, then a ready card with the guest QR beside the guest, host and wall links and the local passcode. While it runs, new uploads and approvals appear in the terminal as they happen, and single keys open the wall (`w`), Control (`c`) or the guest page (`s`), copy the passcode (`p`), show TV setup (`t`), reprint the card (`r`) or stop (`q`).
+- `pnpm remote:vega` launches [Vega web remote](https://github.com/boothwall/vega-web-remote) v0.2.2, pinned to its source commit: a full remote in a browser tab for the Virtual Device or a Fire TV in developer mode, with a device picker, media keys, held OK and typing onto the TV. It works with any Vega app. `pnpm try` mentions it once the TV app is open; the README, the development guide and the event guide describe it. The existing `pnpm remote` stays.
 
 ### Changed
 

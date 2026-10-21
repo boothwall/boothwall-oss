@@ -108,7 +108,19 @@ pnpm try
 
 `pnpm try` is `pnpm demo --lan` plus the TV: it points `urls` in the config at your machine while it runs (the TV reads its API at build time; stopping puts the config back), builds the app and opens it on the Virtual Device. The QR code on the TV leads phones to your local wall. To do it by hand, set the `urls` that `pnpm demo --lan` prints and run `pnpm tv:build:debug && pnpm tv:run:vvd` (`tv:run:vvd` installs the Apple Silicon build; on an Intel Mac use `pnpm try`).
 
-Use the Virtual Device's on-screen remote, or run `pnpm remote` for a bigger one in your browser. To run without a network, set `demo: true` in the config and rebuild; in demo mode the remote's Menu button steps through the four themes.
+To run without a network, set `demo: true` in the config and rebuild; in demo mode the remote's Menu button steps through the four themes.
+
+### Vega web remote
+
+[**Vega web remote**](https://github.com/boothwall/vega-web-remote) is our optional developer companion: a full remote in a browser tab, for the Virtual Device or a Fire TV in developer mode. Pick a device, use the D-pad and media keys, hold OK or type onto the TV. It sends real device inputs through the Vega SDK, so it also works with other Vega apps.
+
+```sh
+pnpm remote:vega
+```
+
+Open http://localhost:4400 and choose your device. This launches the separately maintained v0.2.2 release, pinned to its source commit. The first run needs internet access to fetch it from GitHub and npm may ask for confirmation. It uses your installed Vega SDK; it does not start or install a TV app. Pass `--port 4401` if port 4400 is busy, or `--vega /path/to/vega` to choose the CLI.
+
+The companion is MIT-licensed and has no runtime dependencies. Its [README](https://github.com/boothwall/vega-web-remote/tree/v0.2.2#readme) covers device setup, shortcuts and troubleshooting. The existing `pnpm remote` remains available with `VEGA_DEVICE`, `VEGA_CLI` and `PORT`; do not run both remotes on the same port. Event hosts still use `/control` to approve photos and manage their wall.
 
 ## Make it yours
 
