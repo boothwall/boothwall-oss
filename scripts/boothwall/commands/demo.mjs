@@ -4,12 +4,14 @@ import { overrideConfig } from "../lib/demo/config-override.mjs";
 import { lanAddress } from "../lib/demo/network.mjs";
 import { localPasscode } from "../lib/demo/passcode.mjs";
 import { freePort, startServer, waitUntilUp } from "../lib/demo/processes.mjs";
+import { stage } from "../lib/demo/progress.mjs";
 import { seedLocalWall, seedStatusMessage } from "../lib/demo/seed.mjs";
+import { sessionKeys, startSession } from "../lib/demo/session.mjs";
 import { buildAndOpenOnVirtualDevice, vegaCli, virtualDeviceRunning } from "../lib/demo/tv.mjs";
 import { demoIntro, demoReady } from "../lib/demo/welcome.mjs";
 import { API_DIR, CF, CONFIG_FILE, DEV_VARS, ROOT, VITE, WEB_DIR } from "../lib/paths.mjs";
 import { ensureFingerprintKeyFile } from "../lib/secrets/index.mjs";
-import { bold, dim, log, ok, step, UserError } from "../lib/ui.mjs";
+import { bold, dim, log, ok, step, terminalOutput, UserError } from "../lib/ui.mjs";
 import { migrate } from "./migrate.mjs";
 
 const CONFIG = relative(ROOT, CONFIG_FILE);
@@ -36,11 +38,19 @@ export async function demo({ lan = false, tv = false } = {}) {
   const apiUrl = `http://${host}:${apiPort}`;
   const webUrl = `http://${host}:${webPort}`;
 
+  const started = Date.now();
   log(demoIntro({ shared }));
 
-  const { passcode, created } = localPasscode();
-  await ensureFingerprintKeyFile(DEV_VARS);
-  await migrate({ local: true });
+  const { passcode, created } = await stage(
+    "Preparing the local database",
+    async () => {
+      const local = localPasscode();
+      await ensureFingerprintKeyFile(DEV_VARS);
+      await migrate({ local: true });
+      return local;
+    },
+    () => "Local database ready",
+  );
 
   // Before the servers start, because both read the config as they start.
   const restoreConfig = tv
@@ -52,8 +62,10 @@ export async function demo({ lan = false, tv = false } = {}) {
     : () => true;
   const servers = [];
   let stopping = false;
+  let endSession = () => {};
   const stop = () => {
     stopping = true;
+    endSession();
     servers.forEach(({ child }) => child.exitCode === null && child.kill());
     if (!restoreConfig()) log(dim(`${CONFIG} changed while the demo ran, so it stays as it is.`));
   };
@@ -61,42 +73,70 @@ export async function demo({ lan = false, tv = false } = {}) {
   process.once("SIGTERM", stop);
 
   try {
-    step("Starting the API");
-    const api = startServer("API", CF, ["dev", "--port", String(apiPort)], {
-      cwd: API_DIR,
-      env: shared ? { BOOTHWALL_DEMO_LAN: "1" } : {},
-    });
-    servers.push(api);
-    await waitUntilUp(`http://${self}:${apiPort}/health`, api);
-    ok(`API on ${apiUrl}`);
-
-    step("Filling the wall");
-    const seed = await seedLocalWall(`http://${self}:${apiPort}`, passcode);
-    ok(seedStatusMessage(seed));
-
-    step("Starting the web app");
-    const web = startServer(
-      "web app",
-      VITE,
-      ["--port", String(webPort), "--strictPort", ...webBind],
-      {
-        cwd: WEB_DIR,
-        env: { VITE_API_URL: apiUrl },
+    await stage(
+      "Starting the API",
+      async () => {
+        const api = startServer("API", CF, ["dev", "--port", String(apiPort)], {
+          cwd: API_DIR,
+          env: shared ? { BOOTHWALL_DEMO_LAN: "1" } : {},
+        });
+        servers.push(api);
+        await waitUntilUp(`http://${self}:${apiPort}/health`, api);
       },
+      () => `API on ${apiUrl}`,
     );
-    servers.push(web);
-    await waitUntilUp(`http://${self}:${webPort}`, web);
-    ok(`Web app on ${webUrl}`);
+
+    await stage(
+      "Filling the wall",
+      () => seedLocalWall(`http://${self}:${apiPort}`, passcode),
+      seedStatusMessage,
+    );
+
+    await stage(
+      "Starting the web app",
+      async () => {
+        const web = startServer(
+          "web app",
+          VITE,
+          ["--port", String(webPort), "--strictPort", ...webBind],
+          {
+            cwd: WEB_DIR,
+            env: { VITE_API_URL: apiUrl },
+          },
+        );
+        servers.push(web);
+        await waitUntilUp(`http://${self}:${webPort}`, web);
+      },
+      () => `Web app on ${webUrl}`,
+    );
   } catch (error) {
     stop();
     throw error;
   }
 
-  log(demoReady({ webUrl, passcode, created, shared }));
-  if (lan && !tv) log(tvHint(apiUrl, webUrl));
+  // Shortcuts and the live feed need a terminal that can take single keys.
+  const output = terminalOutput();
+  const interactive = output.rich && Boolean(process.stdin.isTTY);
+  const tvHelp = lan && !tv ? tvHint(apiUrl, webUrl) : "";
+  const readyMs = Date.now() - started;
+  const card = () =>
+    demoReady({ webUrl, passcode, created, shared, readyMs }, output, {
+      keys: interactive ? sessionKeys({ tvHelp }) : [],
+    });
+  log(card());
+  if (tvHelp && !interactive) log(tvHelp);
 
   if (tv) await openOnTv();
-  log("Press Ctrl+C to stop.");
+  if (interactive && !stopping)
+    endSession = startSession({
+      webUrl,
+      apiUrl: `http://${self}:${apiPort}`,
+      passcode,
+      tvHelp,
+      card,
+      output,
+    });
+  else log("Press Ctrl+C to stop.");
 
   const { server, code, signal } = await Promise.race(
     servers.map((server) => server.exited.then((exit) => ({ server, ...exit }))),

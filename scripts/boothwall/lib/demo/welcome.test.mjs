@@ -11,86 +11,105 @@ const example = {
   shared: true,
 };
 const plain = { rich: false, color: false, columns: 80 };
-const rich = { rich: true, color: true, columns: 80 };
+const rich = { rich: true, color: true, columns: 100 };
 const strip = stripVTControlCharacters;
+const fakeQr = () => Array.from({ length: 15 }, () => "#".repeat(29));
 
-test("the ready screen keeps actual ports and separates guest, host and display", () => {
-  const text = demoReady(example, plain);
-  assert.match(text, /1 Send a photo -> 2 Approve it -> 3 Look up/);
-  for (const path of ["/snap", "/control", "/"])
-    assert.ok(text.includes(`${example.webUrl}${path}`));
-  assert.ok(text.indexOf("/snap") < text.indexOf("/control"));
-  assert.match(text, /Same Wi-Fi/);
-  assert.match(text, /Local passcode: example-local-code/);
+test("the ready card keeps actual ports and orders guest, host and wall", () => {
+  const text = demoReady({ ...example, readyMs: 4870 }, plain);
+  const at = (path) => text.indexOf(`${example.webUrl}${path}\n`);
+  assert.ok(at("/snap") > 0 && at("/snap") < at("/control") && at("/control") < at("/"));
+  assert.match(
+    text,
+    /1 {2}GUEST {2}Send a photo[\s\S]*2 {2}HOST {3}Approve it[\s\S]*3 {2}WALL {3}Look up/,
+  );
+  assert.match(text, /Passcode {2}example-local-code/);
+  assert.match(text, /Phones on the same Wi-Fi/);
+  assert.match(text, /ready in 4\.9s/);
   assert.ok(!text.includes("\x1b"));
-  assert.doesNotMatch(text, /[█▀▄]|TV.*connected|https:\/\//);
+  assert.doesNotMatch(text, /[█▀▄]|https:\/\//);
 });
 
 test("only the guest URL is handed to the QR encoder, never host credentials", () => {
   const encoded = [];
-  const text = demoReady(example, rich, (url) => {
-    encoded.push(url);
-    return "QR";
+  demoReady(example, rich, {
+    qrRenderer: (url) => {
+      encoded.push(url);
+      return fakeQr();
+    },
   });
   assert.deepEqual(encoded, [`${example.webUrl}/snap`]);
-  assert.match(text, /QR/);
-  assert.match(text, /Scan to send a photo/);
 });
 
-test("plain and very narrow terminals keep copyable URLs without attempting QR", () => {
-  for (const options of [plain, { ...rich, columns: 24 }]) {
-    const text = demoReady(example, options, () => {
-      throw new Error("QR must be skipped");
-    });
-    assert.ok(text.includes(`${example.webUrl}/snap`));
-    assert.doesNotMatch(text, /Scan to send/);
-  }
+test("a wide terminal puts the QR beside the roles; a narrower one stacks it, URLs whole", () => {
+  const wide = strip(demoReady(example, rich, { qrRenderer: fakeQr })).split("\n");
+  assert.ok(wide.some((line) => /^#{29} {4}\S/.test(line)));
+  assert.ok(wide.every((line) => line.length <= rich.columns));
+
+  const narrow = strip(demoReady(example, { ...rich, columns: 60 }, { qrRenderer: fakeQr }));
+  assert.ok(narrow.indexOf("Scan to send") > narrow.indexOf("/snap"));
+  assert.ok(narrow.indexOf("Scan to send") < narrow.indexOf("/control"));
+  for (const path of ["/snap", "/control", "/"])
+    assert.ok(narrow.includes(`${example.webUrl}${path}`));
 });
 
-test("localhost mode explains phone access and omits a non-routable guest QR", () => {
-  const text = demoReady(
-    { ...example, webUrl: "http://localhost:5173", shared: false },
-    rich,
-    () => {
-      throw new Error("No localhost phone QR");
-    },
-  );
-  assert.match(text, /pnpm demo --lan/);
-  assert.doesNotMatch(text, /Same Wi-Fi|Scan to send/);
-});
-
-test("the saved-passcode hint appears only when a passcode was created", () => {
-  assert.match(
-    demoReady({ ...example, created: true }, plain),
-    /new, saved in apps\/api\/\.dev\.vars/,
-  );
-  assert.doesNotMatch(demoReady(example, plain), /new, saved/);
-});
-
-test("a QR encoding failure falls back to the full URL without hiding readiness", () => {
-  const text = demoReady(example, rich, () => {
-    throw new Error("encoding failed");
+test("localhost and plain output keep copyable URLs without a QR", () => {
+  const never = () => {
+    throw new Error("QR must be skipped");
+  };
+  const local = demoReady({ ...example, webUrl: "http://localhost:5173", shared: false }, rich, {
+    qrRenderer: never,
   });
-  assert.match(text, /Your wall is ready/);
+  assert.match(local, /pnpm demo --lan/);
+  assert.doesNotMatch(local, /same Wi-Fi|Scan to send/);
+  assert.doesNotMatch(demoReady(example, plain, { qrRenderer: never }), /Scan to send/);
+});
+
+test("a QR failure falls back to the full URL without hiding readiness", () => {
+  const text = demoReady(example, rich, {
+    qrRenderer: () => {
+      throw new Error("encoding failed");
+    },
+  });
+  assert.match(text, /Your wall is live/);
   assert.ok(text.includes(`${example.webUrl}/snap`));
   assert.doesNotMatch(text, /Scan to send/);
 });
 
-test("real QR output preserves its quiet zone, contrast and width budget", () => {
-  const qr = uploadQr(`${example.webUrl}/snap`, 80);
-  assert.ok(qr.includes("\x1b[97;40m"));
-  const lines = strip(qr).split("\n");
-  assert.ok(lines.length > 10);
-  assert.ok(lines.every((line) => line.length <= 80 && /^[█▀▄ ]+$/.test(line)));
-  assert.ok(lines[0].startsWith("████"));
-  assert.equal(uploadQr(`${example.webUrl}/snap`, 12), "");
+test("the saved-passcode hint and the shortcuts appear only when they apply", () => {
+  assert.match(
+    demoReady({ ...example, created: true }, plain),
+    /new, saved in apps\/api\/\.dev\.vars/,
+  );
+  assert.doesNotMatch(demoReady(example, plain), /new, saved|quit/);
+  const keys = [
+    ["w", "wall"],
+    ["c", "Control"],
+    ["q", "quit"],
+  ];
+  const lines = strip(demoReady(example, { ...rich, columns: 20 }, { keys })).split("\n");
+  assert.deepEqual(lines.slice(-2), ["w wall  ·  c Control", "q quit"]);
 });
 
-test("intro identifies the mode without making unverified readiness claims", () => {
+test("real QR output is compact, keeps its quiet zone and contrast, and respects the width", () => {
+  const qr = uploadQr("http://192.168.178.123:5173/snap", 80);
+  const lines = qr.map(strip);
+  assert.ok(qr.every((line) => line.startsWith("\x1b[97;40m")));
+  assert.ok(lines.length > 10 && lines.length <= 19);
+  assert.ok(lines.every((line) => line.length === lines[0].length && line.length <= 37));
+  assert.ok(lines[0].startsWith("██") && /^[█▀▄ ]+$/.test(lines.join("")));
+  assert.deepEqual(uploadQr(`${example.webUrl}/snap`, 12), []);
+});
+
+test("intro shows the OSS lockup and mode without claiming readiness", () => {
   const text = demoIntro({ shared: true }, plain);
-  assert.match(text, /BoothWall.*LOCAL NETWORK DEMO/);
-  assert.doesNotMatch(text, /ready|✓|connected/i);
-  assert.match(demoIntro({ shared: false }, plain), /THIS COMPUTER/);
+  assert.match(text, /BoothWall OSS {2}· local network demo/);
+  assert.doesNotMatch(text, /ready|live|✓/i);
+  assert.match(demoIntro({ shared: false }, plain), /on this computer/);
+  const lockup = demoIntro({ shared: true }, rich);
+  assert.ok(
+    ["\x1b[1;38;2;217;69;43mWall", "\x1b[1;38;5;167mWall"].some((wall) => lockup.includes(wall)),
+  );
 });
 
 test("rich output requires a capable terminal; NO_COLOR and CI stay plain", () => {
