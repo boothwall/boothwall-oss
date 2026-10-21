@@ -4,6 +4,12 @@ Notable changes to BoothWall, newest first. The format follows [Keep a Changelog
 
 ## [Unreleased]
 
+## [3.1.1] - 2026-10-21
+
+### Changed
+
+- `pnpm remote:vega` runs the latest [Vega web remote](https://github.com/boothwall/vega-web-remote) straight from GitHub instead of a pinned commit, so it picks up new remote releases without a BoothWall update.
+
 ## [3.1.0] - 2026-10-21
 
 ### Added
@@ -132,7 +138,8 @@ Live Wall, the photo wall I built on my own as a booth demo and first showed at 
 - `apps/api`: a Hono API on Cloudflare Workers with D1, R2 and a hibernating Durable Object that pushes new photos to every wall.
 - `packages/shared`: the contracts all three apps share.
 
-[Unreleased]: https://github.com/boothwall/boothwall-oss/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/boothwall/boothwall-oss/compare/v3.1.1...HEAD
+[3.1.1]: https://github.com/boothwall/boothwall-oss/compare/v3.1.0...v3.1.1
 [3.1.0]: https://github.com/boothwall/boothwall-oss/compare/v3.0.4...v3.1.0
 [3.0.4]: https://github.com/boothwall/boothwall-oss/compare/v3.0.3...v3.0.4
 [3.0.3]: https://github.com/boothwall/boothwall-oss/compare/v3.0.2...v3.0.3

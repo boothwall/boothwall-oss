@@ -20,7 +20,7 @@ These keys arrive through Vega Media Controls, the route Alexa's "pause" and "ne
 
 `pnpm remote` opens a remote in your browser at http://localhost:4400. It drives the Virtual Device; set `VEGA_DEVICE=<serial>` for a Fire TV Stick in developer mode.
 
-For the full [Vega web remote](https://github.com/boothwall/vega-web-remote/tree/v0.2.2), run `pnpm remote:vega` and select your device at http://localhost:4400. It includes media keys, held OK and text input, and requires the Vega SDK plus a device in developer mode. First use fetches the pinned release from GitHub; it is a local developer tool, separate from the event host’s Control panel. Run one remote at a time, or give the companion `--port 4401`.
+For the full [Vega web remote](https://github.com/boothwall/vega-web-remote), run `pnpm remote:vega` and select your device at http://localhost:4400. It includes media keys, held OK and text input, and requires the Vega SDK plus a device in developer mode. It runs the latest release straight from GitHub; it is a local developer tool, separate from the event host’s Control panel. Run one remote at a time, or give the companion `--port 4401`.
 
 ## The Control desk
 

@@ -118,9 +118,9 @@ To run without a network, set `demo: true` in the config and rebuild; in demo mo
 pnpm remote:vega
 ```
 
-Open http://localhost:4400 and choose your device. This launches the separately maintained v0.2.2 release, pinned to its source commit. The first run needs internet access to fetch it from GitHub and npm may ask for confirmation. It uses your installed Vega SDK; it does not start or install a TV app. Pass `--port 4401` if port 4400 is busy, or `--vega /path/to/vega` to choose the CLI.
+Open http://localhost:4400 and choose your device. This runs the latest Vega web remote straight from GitHub, so it needs internet access, and npm may ask for confirmation the first time. It uses your installed Vega SDK; it does not start or install a TV app. Pass `--port 4401` if port 4400 is busy, or `--vega /path/to/vega` to choose the CLI.
 
-The companion is MIT-licensed and has no runtime dependencies. Its [README](https://github.com/boothwall/vega-web-remote/tree/v0.2.2#readme) covers device setup, shortcuts and troubleshooting. The existing `pnpm remote` remains available with `VEGA_DEVICE`, `VEGA_CLI` and `PORT`; do not run both remotes on the same port. Event hosts still use `/control` to approve photos and manage their wall.
+The companion is MIT-licensed and has no runtime dependencies. Its [README](https://github.com/boothwall/vega-web-remote#readme) covers device setup, shortcuts and troubleshooting. The existing `pnpm remote` remains available with `VEGA_DEVICE`, `VEGA_CLI` and `PORT`; do not run both remotes on the same port. Event hosts still use `/control` to approve photos and manage their wall.
 
 ## Make it yours
 

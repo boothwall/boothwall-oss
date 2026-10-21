@@ -29,7 +29,7 @@
     "prepare": "husky",
     "postinstall": "node scripts/postinstall/link-cf-delegates.mjs",
     "remote": "node scripts/remote/booth-remote.mjs",
-    "remote:vega": "npx github:boothwall/vega-web-remote#6d6f8540e547df7878cfcefe9365bcae0509095b",
+    "remote:vega": "npx github:boothwall/vega-web-remote",
     "boothwall": "node scripts/boothwall/index.mjs"
   },
   "devDependencies": {
