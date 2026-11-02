@@ -42,6 +42,11 @@ id = "/com.amazon.kepler.keplercrypto_2@IKeplercrypto_1"
 id = "com.boothwall.app.main"
 runtime-module = "/com.amazon.kepler.runtime.react_native_kepler_4@IReactNativeKepler_0"
 launch-type = "singleton"
+# Signage. Without timeout-secs, LCM uses its default and backgrounds an inactive foreground
+# component with no crash report. Permanent is only stopped by an explicit user action.
+# 31536000 seconds is one year, the same value useKeepAwake sets through TimeoutManager.
+lifespan = "permanent"
+timeout-secs = 31536000
 # The media category goes with the media-controls provider below (features/media-controls).
 categories = ["com.amazon.category.main", "com.amazon.category.kepler.media"]
 
