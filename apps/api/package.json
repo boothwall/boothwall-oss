@@ -23,7 +23,7 @@
     "@hono/zod-validator": "^0.9.1",
     "@boothwall/shared": "workspace:*",
     "drizzle-orm": "^0.45.0",
-    "hono": "^4.13.13",
+    "hono": "^4.13.16",
     "zod": "^4.6.5"
   },
   "devDependencies": {
